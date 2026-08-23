@@ -9,10 +9,9 @@ variable "prefix" {
   }
 }
 
-variable "location" {
-  description = "Regione Azure per resource group e storage."
+variable "resource_group_name" {
+  description = "Nome del Resource Group GIÀ ESISTENTE in cui creare le risorse (Terraform lo usa come data source, non lo crea)."
   type        = string
-  default     = "West Europe"
 }
 
 variable "swa_location" {

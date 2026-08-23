@@ -1,5 +1,9 @@
 # Infrastruttura come codice: Terraform + deploy via GitHub Actions
 
+> **Aggiornamento (RG preesistente).** Terraform non crea più il Resource Group: ne usa uno **già esistente** come `data source` (`var.resource_group_name`), lo stesso per lo storage del tfstate (bootstrap) e per le risorse dell'app. Dove sotto si legge che `terraform apply`/il bootstrap "crea il Resource Group", oggi lo referenzia soltanto.
+>
+> **Aggiornamento (deploy orchestrato in CI).** Il modello descritto sotto ("Terraform locale + push che pubblica") ha ora un'alternativa consigliata: un unico workflow **manuale** ([`infra-and-deploy.yml`](../../.github/workflows/infra-and-deploy.yml)) che gira `terraform apply` **dentro** GitHub Actions e poi pubblica il contenuto. Cambia il ponte tra i due mondi: (1) l'auth ad Azure è via **OIDC** (federated credential, niente secret di lunga durata) invece dell'`az login` locale; (2) il **deployment token** della SWA non è più un secret salvato a mano — il workflow lo legge dall'output di Terraform nello stesso run; (3) lo storage del tfstate è creato in modo idempotente da uno step `az` in CI, quindi il modulo `bootstrap/` serve solo per il deploy da locale (percorso B in DEPLOY.md).
+
 L'infrastruttura Azure (ADR-0003: Static Web App + Storage) è descritta in **Terraform** (`infra/`, provider `azurerm`) e il codice del sito è pubblicato da **GitHub Actions** a ogni push su `main`. Terraform crea e possiede l'infrastruttura; la pipeline pubblica il contenuto. I due mondi si toccano in un solo punto: il **deployment token** della SWA.
 
 ## 1. Terraform possiede l'infrastruttura, non il codice

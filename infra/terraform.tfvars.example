@@ -2,8 +2,10 @@
 # In alternativa passa i valori con -var o TF_VAR_*.
 
 prefix       = "smwedding"
-location     = "West Europe"
 swa_location = "West Europe"
+
+# Resource Group GIÀ ESISTENTE in cui creare le risorse (Terraform non lo crea).
+resource_group_name = "il-tuo-rg-esistente"
 
 # PIN admin REALE degli Sposi (min 6 caratteri, non "changeme-admin").
 # Meglio ancora: NON scriverlo qui, esportalo come env:  TF_VAR_admin_pin="..."

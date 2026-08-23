@@ -1,11 +1,11 @@
 # ---------------------------------------------------------------------------
 # Bootstrap dello stato remoto di Terraform (si esegue UNA VOLTA sola).
 #
-# Crea il resource group + lo storage account + il container che conserveranno
-# il tfstate della configurazione principale (../). Questo modulo usa stato
-# LOCALE (non ha un backend remoto): è il classico problema dell'uovo e la
-# gallina — non puoi mettere in remoto lo stato dello storage che deve ancora
-# esistere.
+# Nel Resource Group GIÀ ESISTENTE crea lo storage account + il container che
+# conserveranno il tfstate della configurazione principale (../). Questo modulo
+# usa stato LOCALE (non ha un backend remoto): è il classico problema dell'uovo
+# e la gallina — non puoi mettere in remoto lo stato dello storage che deve
+# ancora esistere.
 #
 # Uso:
 #   cd infra/bootstrap
@@ -40,10 +40,9 @@ variable "prefix" {
   default     = "smwedding"
 }
 
-variable "location" {
-  description = "Regione Azure."
+variable "resource_group_name" {
+  description = "Nome del Resource Group GIÀ ESISTENTE (lo stesso usato dalla config principale). Terraform lo referenzia, non lo crea."
   type        = string
-  default     = "West Europe"
 }
 
 # Suffisso casuale: i nomi degli storage account sono globali e devono essere unici.
@@ -53,15 +52,15 @@ resource "random_string" "suffix" {
   special = false
 }
 
-resource "azurerm_resource_group" "tfstate" {
-  name     = "${var.prefix}-tfstate-rg"
-  location = var.location
+# Resource Group già esistente: referenziato, non creato.
+data "azurerm_resource_group" "tfstate" {
+  name = var.resource_group_name
 }
 
 resource "azurerm_storage_account" "tfstate" {
   name                            = "${var.prefix}tfstate${random_string.suffix.result}"
-  resource_group_name             = azurerm_resource_group.tfstate.name
-  location                        = azurerm_resource_group.tfstate.location
+  resource_group_name             = data.azurerm_resource_group.tfstate.name
+  location                        = data.azurerm_resource_group.tfstate.location
   account_tier                    = "Standard"
   account_replication_type        = "LRS"
   min_tls_version                 = "TLS1_2"
@@ -79,7 +78,7 @@ resource "azurerm_storage_container" "tfstate" {
 }
 
 output "resource_group_name" {
-  value = azurerm_resource_group.tfstate.name
+  value = data.azurerm_resource_group.tfstate.name
 }
 
 output "storage_account_name" {
@@ -93,7 +92,7 @@ output "container_name" {
 output "backend_hcl" {
   description = "Incolla questo in infra/backend.hcl"
   value       = <<-EOT
-    resource_group_name  = "${azurerm_resource_group.tfstate.name}"
+    resource_group_name  = "${data.azurerm_resource_group.tfstate.name}"
     storage_account_name = "${azurerm_storage_account.tfstate.name}"
     container_name       = "${azurerm_storage_container.tfstate.name}"
     key                  = "wedding-site.tfstate"
