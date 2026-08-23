@@ -1,0 +1,20 @@
+{
+  "name": "sm-wedding-site",
+  "version": "1.0.0",
+  "description": "Sito matrimonio Salvatore & Martina — statico multi-pagina + Azure Functions",
+  "private": true,
+  "scripts": {
+    "azurite": "azurite --silent --skipApiVersionCheck --location .azurite --debug .azurite/debug.log",
+    "api:install": "npm --prefix api install",
+    "api": "node scripts/wait-azurite.mjs && cd api && func start --port 7071",
+    "swa": "swa start . --api-devserver-url http://localhost:7071",
+    "dev": "concurrently -n azurite,api,swa -c magenta,blue,green \"npm:azurite\" \"npm:api\" \"npm:swa\"",
+    "serve": "http-server -p 5173 -c-1 ."
+  },
+  "devDependencies": {
+    "@azure/static-web-apps-cli": "^2.0.2",
+    "azurite": "^3.33.0",
+    "concurrently": "^9.1.0",
+    "http-server": "^14.1.1"
+  }
+}

@@ -1,0 +1,8 @@
+# Copia in backend.hcl (git-ignored) con i valori dell'output del bootstrap:
+#   cd infra/bootstrap && terraform output backend_hcl
+# Poi:  cd infra && terraform init -backend-config=backend.hcl
+
+resource_group_name  = "smwedding-tfstate-rg"
+storage_account_name = "smweddingtfstateXXXXXX"
+container_name       = "tfstate"
+key                  = "wedding-site.tfstate"

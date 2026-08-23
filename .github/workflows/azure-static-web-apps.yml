@@ -1,0 +1,48 @@
+name: Deploy sito su Azure Static Web Apps
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write # per i commenti con le anteprime delle PR
+
+jobs:
+  # Nome job "build_and_deploy_job": è quello che la SWA CLI si aspetta quando
+  # legge questo file in locale (`swa start`); su GitHub il nome è indifferente.
+  build_and_deploy_job:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+    runs-on: ubuntu-latest
+    name: Build e deploy
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+          lfs: false
+
+      - name: Deploy su Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          # Sito statico multi-pagina alla radice: niente build del frontend.
+          app_location: "/"
+          api_location: "api"
+          output_location: ""
+          skip_app_build: true
+
+  close_pr:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    name: Chiudi anteprima PR
+    steps:
+      - name: Chiudi ambiente di anteprima
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: close

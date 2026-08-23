@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+api/node_modules/
+
+# Local Azure Functions settings (contains ADMIN_PIN) — do NOT commit
+api/local.settings.json
+
+# Azurite local storage emulator data
+.azurite/
+__blobstorage__/
+__queuestorage__/
+__azurite_db*__.json
+
+# Azure Functions build artifacts
+api/bin/
+api/obj/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Terraform — stato, lock del provider e SEGRETI (PIN, connection string, token)
+infra/**/.terraform/
+infra/**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+!*.tfvars.example
+infra/backend.hcl
+!infra/backend.hcl.example
+infra/**/*.auto.tfvars

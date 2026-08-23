@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Salvatore & Martina — 12 Settembre 2026</title>
+  <meta name="description" content="Ci sposiamo! Salvatore & Martina, 12 settembre 2026." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cormorant+Garamond:wght@400;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="site-nav"></div>
+
+  <header class="hero">
+    <div class="container">
+      <img class="hero__logo" src="assets/img/logo-sm.png" alt="Logo Salvatore & Martina" />
+      <h1 class="hero__names">Salvatore <span class="amp">&amp;</span> Martina</h1>
+      <p class="hero__tagline">Ci sposiamo!</p>
+      <p class="hero__date">Sabato 12 Settembre 2026 · ore 11:00</p>
+      <div id="countdown" class="countdown"></div>
+    </div>
+  </header>
+
+  <!-- Claim della home: non è una citazione (niente virgolette, niente firma),
+       è la voce della pagina. L'a-capo è forzato sul trattino per farla
+       respirare in due tempi invece di spezzarsi dove capita. -->
+  <section class="section claim">
+    <div class="container">
+      <p class="claim__text">
+        L'amore, come il vino buono, chiede tempo<br />
+        e qualcuno con cui condividerlo.
+      </p>
+    </div>
+  </section>
+
+  <!-- Card di smistamento verso le altre pagine. Statiche di proposito: sono
+       navigazione, e la navigazione qui vive nel markup (come in partials.js),
+       non in config.js. Ordine = cronologia della giornata dell'invitato. -->
+  <section class="section home-cards-section">
+    <div class="container">
+      <div class="home-cards">
+        <a class="home-card" href="luoghi.html">
+          <span class="home-card__icon">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M24 43c8.7-9.6 13-16.6 13-21.9A13 13 0 0 0 11 21.1C11 26.4 15.3 33.4 24 43Z" />
+              <circle cx="24" cy="20.5" r="5" />
+            </svg>
+          </span>
+          <span class="home-card__body">
+            <span class="home-card__title">Luoghi</span>
+            <span class="home-card__desc">I due luoghi e come arrivarci</span>
+          </span>
+          <span class="home-card__cta"><span class="home-card__cta-text">Scopri</span> <span aria-hidden="true">&rarr;</span></span>
+        </a>
+
+        <a class="home-card" href="tavoli.html">
+          <span class="home-card__icon">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="24" cy="24" r="12" />
+              <circle cx="41" cy="24" r="2.6" />
+              <circle cx="32.5" cy="9.3" r="2.6" />
+              <circle cx="15.5" cy="9.3" r="2.6" />
+              <circle cx="7" cy="24" r="2.6" />
+              <circle cx="15.5" cy="38.7" r="2.6" />
+              <circle cx="32.5" cy="38.7" r="2.6" />
+            </svg>
+          </span>
+          <span class="home-card__body">
+            <span class="home-card__title">Tavoli</span>
+            <span class="home-card__desc">Trova il tuo tavolo: ognuno porta il nome di una cantina</span>
+          </span>
+          <span class="home-card__cta"><span class="home-card__cta-text">Scopri</span> <span aria-hidden="true">&rarr;</span></span>
+        </a>
+
+        <a class="home-card" href="galleria.html">
+          <span class="home-card__icon">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="5" y="14" width="38" height="26" rx="5" />
+              <path d="M17.5 14 20.3 9.5h7.4L30.5 14" />
+              <circle cx="24" cy="27" r="8" />
+              <path d="M36.5 20H38" />
+            </svg>
+          </span>
+          <span class="home-card__body">
+            <span class="home-card__title">Galleria</span>
+            <span class="home-card__desc">Il vostro spazio per le foto del giorno</span>
+          </span>
+          <span class="home-card__cta"><span class="home-card__cta-text">Scopri</span> <span aria-hidden="true">&rarr;</span></span>
+        </a>
+
+        <a class="home-card" href="giochi.html">
+          <span class="home-card__icon">
+            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="8" y="8" width="32" height="32" rx="7" />
+              <circle cx="17" cy="17" r="2.2" fill="currentColor" stroke="none" />
+              <circle cx="31" cy="17" r="2.2" fill="currentColor" stroke="none" />
+              <circle cx="24" cy="24" r="2.2" fill="currentColor" stroke="none" />
+              <circle cx="17" cy="31" r="2.2" fill="currentColor" stroke="none" />
+              <circle cx="31" cy="31" r="2.2" fill="currentColor" stroke="none" />
+            </svg>
+          </span>
+          <span class="home-card__body">
+            <span class="home-card__title">Giochi</span>
+            <span class="home-card__desc">Quanto conoscete gli sposi?</span>
+          </span>
+          <span class="home-card__cta"><span class="home-card__cta-text">Scopri</span> <span aria-hidden="true">&rarr;</span></span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <div id="site-footer"></div>
+  <div id="toast" class="toast"></div>
+  <script type="module" src="js/pages/home.js"></script>
+</body>
+</html>

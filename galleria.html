@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Galleria — Salvatore & Martina</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cormorant+Garamond:wght@400;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="site-nav"></div>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">Galleria condivisa</h2>
+      <p class="section-subtitle">Ogni invitato ha il suo spazio. Crea il tuo, carica i tuoi ricordi e sbircia quelli degli altri 🍷</p>
+
+      <div class="galleria__actions">
+        <button id="my-space" class="btn btn-primary">Il mio spazio</button>
+      </div>
+
+      <div id="spaces" class="spaces"></div>
+    </div>
+  </section>
+
+  <!-- Modal nickname + PIN -->
+  <div id="space-modal" class="modal">
+    <div class="modal__box">
+      <h3 class="modal__title">Il tuo spazio</h3>
+      <p class="modal__hint">Scegli un nickname e un PIN. Se esiste già, inserisci il PIN per rientrare.</p>
+      <div class="field">
+        <label for="nick-input">Nickname</label>
+        <input id="nick-input" type="text" autocomplete="off" maxlength="24" placeholder="es. Marco" />
+      </div>
+      <div class="field">
+        <label for="pin-input">PIN</label>
+        <input id="pin-input" type="password" inputmode="numeric" autocomplete="off" maxlength="12" placeholder="un codice segreto" />
+      </div>
+      <p id="modal-error" class="modal__error"></p>
+      <div class="modal__actions">
+        <button id="modal-cancel" class="btn btn-outline">Annulla</button>
+        <button id="modal-go" class="btn btn-primary">Entra</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="site-footer"></div>
+  <div id="toast" class="toast"></div>
+  <script type="module" src="js/pages/galleria.js"></script>
+</body>
+</html>

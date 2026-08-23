@@ -1,0 +1,14 @@
+# Copia in terraform.tfvars (git-ignored) e compila.
+# In alternativa passa i valori con -var o TF_VAR_*.
+
+prefix       = "smwedding"
+location     = "West Europe"
+swa_location = "West Europe"
+
+# PIN admin REALE degli Sposi (min 6 caratteri, non "changeme-admin").
+# Meglio ancora: NON scriverlo qui, esportalo come env:  TF_VAR_admin_pin="..."
+admin_pin = "CAMBIAMI-pin-sposi"
+
+# CORS del Blob: "*" va bene per un sito privato/noindex.
+# Per stringere, dopo il primo apply rimetti qui "https://<swa_default_host_name>".
+allowed_origin = "*"

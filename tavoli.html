@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Tavoli — Salvatore & Martina</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cormorant+Garamond:wght@400;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="site-nav"></div>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">I Tavoli</h2>
+      <p class="section-subtitle">Ogni tavolo porta il nome di una cantina che abbiamo visitato: trova il tuo nell'elenco delle cantine</p>
+
+      <!-- Ordine nel DOM = ordine su mobile: mappa, scheda, elenco.
+           Su desktop diventano due colonne (mappa a sinistra, colonna destra
+           appiccicata) senza toccare il markup. -->
+      <div class="tavoli">
+        <div class="tavoli__mappa">
+          <div id="mappa" class="mappa"></div>
+        </div>
+        <div class="tavoli__side">
+          <!-- Riempita al clic su un tavolo o su una riga dell'elenco. -->
+          <div id="scheda" class="scheda" hidden></div>
+          <div id="elenco" class="elenco"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div id="site-footer"></div>
+  <div id="toast" class="toast"></div>
+  <script type="module" src="js/pages/tavoli.js"></script>
+</body>
+</html>

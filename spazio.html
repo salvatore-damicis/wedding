@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>Spazio — Salvatore & Martina</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cormorant+Garamond:wght@400;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="site-nav"></div>
+
+  <section class="section">
+    <div class="container">
+      <div class="space-head">
+        <div id="space-nick" class="space-head__nick">…</div>
+        <div id="owner-badge" class="space-head__owner" hidden>✓ Il tuo spazio · <a href="#" id="lock-btn">Esci</a></div>
+      </div>
+
+      <!-- Upload: visibile solo al proprietario (PIN sbloccato) -->
+      <div id="upload" class="upload" hidden>
+        <p><strong>Tocca qui</strong> o trascina foto e video per caricarli</p>
+        <input id="photo-input" type="file" accept="image/*,video/*" multiple />
+      </div>
+      <div id="upload-progress" class="upload-progress" hidden></div>
+
+      <!-- Invito a sbloccare: visibile a chi non è proprietario -->
+      <div class="galleria__actions">
+        <button id="unlock-btn" class="btn btn-primary" hidden>Questo è il mio spazio: sblocca</button>
+        <a href="galleria.html" class="btn btn-outline">← Tutti gli spazi</a>
+      </div>
+
+      <div id="gallery" class="gallery"></div>
+    </div>
+  </section>
+
+  <!-- Modal PIN (per sbloccare il proprio spazio) -->
+  <div id="pin-modal" class="modal">
+    <div class="modal__box">
+      <h3 class="modal__title">Sblocca il tuo spazio</h3>
+      <p class="modal__hint">Inserisci il PIN che hai scelto per questo nickname.</p>
+      <div class="field">
+        <label for="pin-input">PIN</label>
+        <input id="pin-input" type="password" inputmode="numeric" autocomplete="off" maxlength="12" />
+      </div>
+      <p id="modal-error" class="modal__error"></p>
+      <div class="modal__actions">
+        <button id="modal-cancel" class="btn btn-outline">Annulla</button>
+        <button id="modal-go" class="btn btn-primary">Sblocca</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox a schermo intero -->
+  <div id="lightbox" class="lightbox" hidden>
+    <button class="lightbox__close" type="button" aria-label="Chiudi">✕</button>
+    <span class="lightbox__count" aria-hidden="true"></span>
+    <button class="lightbox__nav lightbox__prev" type="button" aria-label="Precedente">‹</button>
+    <div class="lightbox__stage"></div>
+    <button class="lightbox__nav lightbox__next" type="button" aria-label="Successivo">›</button>
+    <div class="lightbox__bar"></div>
+  </div>
+
+  <div id="site-footer"></div>
+  <div id="toast" class="toast"></div>
+  <script type="module" src="js/pages/spazio.js"></script>
+</body>
+</html>
