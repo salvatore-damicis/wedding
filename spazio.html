@@ -17,7 +17,13 @@
     <div class="container">
       <div class="space-head">
         <div id="space-nick" class="space-head__nick">…</div>
-        <div id="owner-badge" class="space-head__owner" hidden>✓ Il tuo spazio · <a href="#" id="lock-btn">Esci</a></div>
+        <div id="owner-badge" class="space-head__owner" hidden>✓ Il tuo spazio</div>
+      </div>
+
+      <!-- A chi non è (ancora) sbloccato: invito a sbloccare per caricare -->
+      <div id="unlock-box" class="space-unlock" hidden>
+        <button id="unlock-btn" class="btn btn-primary">Sblocca per caricare le tue foto</button>
+        <p class="space-unlock-hint">È questo il tuo spazio? Inserisci il PIN e potrai aggiungere le tue foto e i tuoi video.</p>
       </div>
 
       <!-- Upload: visibile solo al proprietario (PIN sbloccato) -->
@@ -27,13 +33,13 @@
       </div>
       <div id="upload-progress" class="upload-progress" hidden></div>
 
-      <!-- Invito a sbloccare: visibile a chi non è proprietario -->
-      <div class="galleria__actions">
-        <button id="unlock-btn" class="btn btn-primary" hidden>Questo è il mio spazio: sblocca</button>
-        <a href="galleria.html" class="btn btn-outline">← Tutti gli spazi</a>
-      </div>
-
       <div id="gallery" class="gallery"></div>
+
+      <!-- Azioni in fondo: tornare alla galleria e (solo proprietario) uscire -->
+      <div class="galleria__actions space-foot">
+        <a href="galleria.html" class="btn btn-outline">← Tutti gli spazi</a>
+        <button id="lock-btn" class="link-quiet" type="button" hidden>Esci dal mio spazio</button>
+      </div>
     </div>
   </section>
 

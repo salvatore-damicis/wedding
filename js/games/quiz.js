@@ -127,8 +127,8 @@ export function initGioco(root) {
     if (view.key === "inattivo") return;
     view = { key: "inattivo" };
     root.innerHTML = `<div class="gq-card gq-center">
-      <p class="gq-big">I giochi non sono ancora attivi 🍷</p>
-      <p class="gq-sub">Gli sposi li apriranno al momento giusto. Torna tra poco!</p>
+      <p class="gq-big">Il gioco non è ancora attivo 🍷</p>
+      <p class="gq-sub">Gli sposi lo apriranno al momento giusto. Torna tra poco!</p>
     </div>`;
   }
 

@@ -16,7 +16,7 @@
  */
 import { tavoli as tavoliStore } from "./adapter.js";
 import { adminSession } from "../admin-session.js";
-import { slugCantina, inizialiCantina, logoSrc, agganciaAlMuro } from "./view.js";
+import { slugCantina, inizialiCantina, logoSrc, agganciaAlMuro, scalaTavoli, TAVOLO_SCALA_MIN, TAVOLO_SCALA_MAX } from "./view.js";
 import { toast } from "../ui.js";
 
 const TIPI = [
@@ -245,6 +245,11 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
       </div>
       <p class="editor-form__nota">Tavoli e ingresso scalano in proporzione: la disposizione resta quella che vedi, cambia la forma della stanza. Se il ristorante ti dà i metri, usali come unità (18×11 m → 180 e 110).</p>
       <p class="editor-form__nota">L'ingresso si sposta trascinando il segno in piantina: si aggancia da solo al muro più vicino.</p>
+      <div class="field">
+        <label for="ed-scala">Grandezza dei tavoli <span id="ed-scala-val">${Math.round(scalaTavoli(map.sala) * 100)}%</span></label>
+        <input id="ed-scala" type="range" min="${TAVOLO_SCALA_MIN}" max="${TAVOLO_SCALA_MAX}" step="0.05" value="${scalaTavoli(map.sala)}" />
+      </div>
+      <p class="editor-form__nota">Vale per tutti i cerchi allo stesso modo: trascina per rimpicciolire o ingrandire.</p>
     </div>`;
 
     const applica = () => {
@@ -260,6 +265,17 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
     // verrebbe scalata tre volte, con due passaggi intermedi assurdi.
     schedaEl.querySelector("#ed-w").addEventListener("change", applica);
     schedaEl.querySelector("#ed-h").addEventListener("change", applica);
+
+    // Grandezza dei cerchi: anteprima dal vivo (input) e commit alla fine (change).
+    const scala = schedaEl.querySelector("#ed-scala");
+    const scalaVal = schedaEl.querySelector("#ed-scala-val");
+    scala.addEventListener("input", () => {
+      const v = Number(scala.value);
+      map.sala.tavoloScala = v;
+      scalaVal.textContent = `${Math.round(v * 100)}%`;
+      mapEl.style.setProperty("--tavolo-scala", String(v));
+    });
+    scala.addEventListener("change", () => segnaSporco());
   }
 
   /* --- form del tavolo selezionato --- */

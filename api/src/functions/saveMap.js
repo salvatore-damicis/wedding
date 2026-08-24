@@ -50,8 +50,13 @@ function sanitizeMap(input) {
 
   if (!tavoli.length) return null;
   const ing = input.sala.ingresso || {};
+  // Grandezza uniforme dei cerchi: fattore in [0.6, 1.8], default 1 (vedi view.js).
+  const scalaRaw = Number(input.sala?.tavoloScala);
+  const tavoloScala = Number.isFinite(scalaRaw) && scalaRaw > 0
+    ? Math.min(1.8, Math.max(0.6, Math.round(scalaRaw * 100) / 100))
+    : 1;
   return {
-    sala: { w, h, ingresso: { x: round(clamp(ing.x, w)), y: round(clamp(ing.y, h)) } },
+    sala: { w, h, ingresso: { x: round(clamp(ing.x, w)), y: round(clamp(ing.y, h)) }, tavoloScala },
     tavoli,
     cantine,
   };

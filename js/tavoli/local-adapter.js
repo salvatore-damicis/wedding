@@ -60,11 +60,29 @@ export class LocalTavoliAdapter {
   }
 
   async getSettings() {
-    return { giochiAttivi: !!leggi(KEY_SETTINGS)?.giochiAttivi };
+    const s = leggi(KEY_SETTINGS) || {};
+    return { giochiAttivi: !!s.giochiAttivi, weddingDate: s.weddingDate || null };
   }
 
+  /* Merge per campo presente, come il backend (saveSettings.js): la regia del
+     gioco salva solo giochiAttivi, la home admin solo weddingDate — nessuno dei
+     due deve azzerare il campo dell'altro. */
   async saveSettings(adminPin, settings) {
     if (adminPin !== ADMIN_PIN) throw new Error("Non autorizzato");
-    localStorage.setItem(KEY_SETTINGS, JSON.stringify({ giochiAttivi: !!settings?.giochiAttivi }));
+    const s = settings && typeof settings === "object" ? settings : {};
+    const prev = leggi(KEY_SETTINGS) || {};
+    const next = {
+      giochiAttivi: "giochiAttivi" in s ? !!s.giochiAttivi : !!prev.giochiAttivi,
+      weddingDate: prev.weddingDate || null,
+    };
+    if ("weddingDate" in s) {
+      const raw = s.weddingDate;
+      if (raw == null || raw === "") next.weddingDate = null;
+      else {
+        const d = new Date(raw);
+        if (!Number.isNaN(d.getTime())) next.weddingDate = d.toISOString();
+      }
+    }
+    localStorage.setItem(KEY_SETTINGS, JSON.stringify(next));
   }
 }

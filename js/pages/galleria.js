@@ -38,7 +38,7 @@ function coverHtml(space) {
 function cardHtml(space) {
   const count = space.photoCount === 1 ? "1 ricordo" : `${space.photoCount} ricordi`;
   const mine = session.isOwner(space.nickname) ? " · il tuo" : "";
-  return `<a class="space-card" href="spazio.html?nick=${encodeURIComponent(space.nickname)}">
+  return `<a class="space-card" href="spazio.html?nick=${encodeURIComponent(space.nickname)}" data-nick="${esc(space.nickname)}">
     ${coverHtml(space)}
     <div class="space-card__body">
       <div class="space-card__nick">${esc(space.nickname)}</div>
@@ -47,17 +47,31 @@ function cardHtml(space) {
   </a>`;
 }
 
+/* Moderazione sposi (galleria.html?admin): decora ogni card con un ✕ per
+   eliminare l'intero spazio. Iniettata via import dinamico, così un invitato non
+   scarica il codice admin. Viene richiamata dopo ogni render. */
+let decoraAdmin = null;
+
+/* Prima cella sempre presente: il "+" per creare (o rientrare nel) proprio spazio. */
+function createTileHtml() {
+  return `<button type="button" class="space-create" id="space-create">
+    <span class="space-create__plus" aria-hidden="true">+</span>
+    <span class="space-create__label">Crea il tuo spazio</span>
+  </button>`;
+}
+
 async function render() {
   try {
     const spaces = await storage.listSpaces();
     spaces.sort((a, b) => b.photoCount - a.photoCount);
-    grid.innerHTML = spaces.length
-      ? spaces.map(cardHtml).join("")
-      : `<p class="spaces__empty">Ancora nessuno spazio. Crea il primo con "Il mio spazio"! 🍷</p>`;
+    grid.innerHTML = createTileHtml() + spaces.map(cardHtml).join("");
   } catch (err) {
-    grid.innerHTML = `<p class="spaces__empty">Impossibile caricare gli spazi. Riprova più tardi.</p>`;
+    grid.innerHTML =
+      createTileHtml() +
+      `<p class="spaces__empty">Impossibile caricare gli spazi. Riprova più tardi.</p>`;
     console.error(err);
   }
+  if (decoraAdmin) decoraAdmin();
 }
 
 /* ---- Modal crea/entra ---- */
@@ -94,7 +108,10 @@ async function submit() {
   location.href = `spazio.html?nick=${encodeURIComponent(nickname)}`;
 }
 
-document.getElementById("my-space").addEventListener("click", openModal);
+// Il tile "+" è ridisegnato a ogni render: delega sulla griglia.
+grid.addEventListener("click", (e) => {
+  if (e.target.closest(".space-create")) openModal();
+});
 document.getElementById("modal-cancel").addEventListener("click", closeModal);
 document.getElementById("modal-go").addEventListener("click", submit);
 modal.addEventListener("click", (e) => {
@@ -104,4 +121,11 @@ pinInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") submit();
 });
 
-render();
+await render();
+
+/* Regia solo con ?admin: PIN sposi, poi eliminazione di interi spazi. */
+if (new URLSearchParams(location.search).has("admin")) {
+  const { initGalleriaAdmin } = await import("./galleria-admin.js");
+  decoraAdmin = await initGalleriaAdmin({ grid, refresh: render });
+  if (decoraAdmin) decoraAdmin();
+}

@@ -14,7 +14,9 @@ const nick = (params.get("nick") || "").trim();
 const nickEl = document.getElementById("space-nick");
 const ownerBadge = document.getElementById("owner-badge");
 const uploadEl = document.getElementById("upload");
+const unlockBox = document.getElementById("unlock-box");
 const unlockBtn = document.getElementById("unlock-btn");
+const lockBtn = document.getElementById("lock-btn");
 const gallery = document.getElementById("gallery");
 const input = document.getElementById("photo-input");
 const progressEl = document.getElementById("upload-progress");
@@ -34,6 +36,9 @@ const pin = () => session.pinFor(nick);
 /* Stato condiviso tra griglia e lightbox. */
 let photos = [];
 let coverId = null;
+/* PIN sposi, valorizzato solo in moderazione (spazio.html?admin): abilita la
+   cancellazione di qualsiasi foto anche non essendo il proprietario. */
+let adminPin = null;
 
 /* ---- Render griglia ---- */
 function mediaThumb(p) {
@@ -59,7 +64,10 @@ function itemHtml(p, i) {
 async function render() {
   ownerBadge.hidden = !isOwner();
   uploadEl.hidden = !isOwner();
-  unlockBtn.hidden = isOwner();
+  // L'invito a sbloccare vale per chi non è proprietario (e non è in moderazione).
+  unlockBox.hidden = isOwner() || !!adminPin;
+  // "Esci" solo al proprietario, e discreto: niente più badge sempre in vista.
+  lockBtn.hidden = !isOwner();
 
   try {
     const data = await storage.getSpace(nick);
@@ -169,21 +177,24 @@ function renderLightbox() {
       : `<img src="${esc(p.url)}" alt="${esc(p.caption || p.name || "foto")}">`;
 
   const owner = isOwner();
+  // Didascalia e copertina sono curatela del proprietario; l'eliminazione la può
+  // fare anche lo sposo in moderazione (adminPin) su qualsiasi foto.
+  const canDelete = owner || !!adminPin;
   const isCover = p.id === coverId;
-  lbBar.innerHTML = owner
+
+  const capBlock = owner
     ? `<div class="lightbox__cap-edit">
          <input id="lb-cap" type="text" maxlength="300" placeholder="Aggiungi una didascalia…" value="${esc(p.caption || "")}">
          <button class="btn btn-outline" id="lb-cap-save" type="button">Salva</button>
-       </div>
-       <div class="lightbox__actions">
-         <a class="btn btn-outline" href="${esc(p.url)}" target="_blank" rel="noopener" download="${esc(p.name || "")}">Scarica</a>
-         <button class="btn btn-outline" id="lb-cover" type="button">${isCover ? "★ Copertina" : "☆ Imposta copertina"}</button>
-         <button class="btn btn-outline lightbox__del" id="lb-del" type="button">Elimina</button>
        </div>`
-    : `<div class="lightbox__cap">${p.caption ? esc(p.caption) : ""}</div>
-       <div class="lightbox__actions">
-         <a class="btn btn-outline" href="${esc(p.url)}" target="_blank" rel="noopener" download="${esc(p.name || "")}">Scarica</a>
-       </div>`;
+    : `<div class="lightbox__cap">${p.caption ? esc(p.caption) : ""}</div>`;
+
+  lbBar.innerHTML = `${capBlock}
+    <div class="lightbox__actions">
+      <a class="btn btn-outline" href="${esc(p.url)}" target="_blank" rel="noopener" download="${esc(p.name || "")}">Scarica</a>
+      ${owner ? `<button class="btn btn-outline" id="lb-cover" type="button">${isCover ? "★ Copertina" : "☆ Imposta copertina"}</button>` : ""}
+      ${canDelete ? `<button class="btn btn-outline lightbox__del" id="lb-del" type="button">Elimina</button>` : ""}
+    </div>`;
 
   lb.querySelector(".lightbox__count").textContent = `${lbIndex + 1} / ${photos.length}`;
 
@@ -212,10 +223,16 @@ function renderLightbox() {
         console.error(err);
       }
     });
+  }
+
+  // Eliminazione: proprietario col proprio PIN, oppure sposo col PIN admin
+  // (moderazione). Il backend accetta entrambi (deletePhoto: PIN dello spazio
+  // OR PIN admin).
+  if (canDelete) {
     lbBar.querySelector("#lb-del").addEventListener("click", async () => {
       if (!confirm("Eliminare questo contenuto?")) return;
       try {
-        await storage.deletePhoto(nick, pin(), p.id);
+        await storage.deletePhoto(nick, adminPin || pin(), p.id);
         photos.splice(lbIndex, 1);
         if (coverId === p.id) coverId = null;
         toast("Eliminato");
@@ -329,3 +346,15 @@ pinInput.addEventListener("keydown", (e) => {
 });
 
 render();
+
+/* Moderazione sposi (spazio.html?admin): PIN sposi, poi barra "Elimina intero
+   spazio" e cancellazione delle singole foto nel visore. Import dinamico: un
+   invitato non scarica questo codice. */
+if (new URLSearchParams(location.search).has("admin")) {
+  const { initSpazioAdmin } = await import("./spazio-admin.js");
+  const res = await initSpazioAdmin({ nick, container: document.querySelector(".section .container") });
+  if (res) {
+    adminPin = res.pin;
+    render(); // ridisegna con i permessi di moderazione (elimina su ogni foto)
+  }
+}

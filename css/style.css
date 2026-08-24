@@ -38,6 +38,13 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* L'attributo `hidden` deve sempre nascondere: senza questo, una classe con un
+   `display` esplicito (es. .space-head__owner { display: inline-flex }) vince
+   sulla regola `[hidden] { display: none }` della UA e l'elemento resta visibile
+   anche quando il JS lo marca hidden. Molti elementi qui si accendono/spengono
+   con l'attributo hidden, quindi lo rendiamo vincolante una volta per tutte. */
+[hidden] { display: none !important; }
+
 html { scroll-behavior: smooth; }
 
 body {
@@ -163,6 +170,24 @@ img { max-width: 100%; display: block; }
 }
 .countdown__num { font-family: var(--font-serif); font-size: clamp(1.6rem, 7vw, 2.4rem); font-weight: 700; color: var(--wine-deep); }
 .countdown__label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-soft); }
+
+/* Pannello admin della home (index.html?admin): imposta la data del countdown.
+   Non è home da invitato — è regia, sobria, in fondo alla pagina. */
+.home-admin { padding-top: 0; }
+.home-admin__card {
+  max-width: 520px; margin: 0 auto; background: var(--paper);
+  border: 1px solid var(--rose-soft); border-radius: var(--radius);
+  box-shadow: var(--shadow); padding: 1.4rem;
+}
+.home-admin__titolo { font-family: var(--font-serif); font-size: 1.4rem; color: var(--wine-deep); margin-bottom: 0.3rem; }
+.home-admin__nota { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 1rem; }
+.home-admin__azioni { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.home-admin__azioni .btn { padding: 0.55rem 1rem; font-size: 0.9rem; }
+.home-admin__stato { min-height: 1.2em; margin-top: 0.7rem; font-size: 0.85rem; color: var(--wine); }
+.home-admin .field input[type="datetime-local"] {
+  width: 100%; padding: 0.6rem 0.8rem; font-size: 1rem; font-family: var(--font-sans);
+  background: var(--cream); border: 2px solid var(--rose-soft); border-radius: 10px;
+}
 
 /* =========================================================================
    Generic section
@@ -293,7 +318,10 @@ img { max-width: 100%; display: block; }
 
 /* ---- Un tavolo ---- */
 .tavolo {
-  --tavolo-size: clamp(38px, 12cqw, 66px);
+  /* `--tavolo-scala` (default 1) lo scrive view.js da sala.tavoloScala: gli Sposi
+     regolano la grandezza di TUTTI i cerchi insieme dall'editor. Il clamp tiene
+     comunque la responsività; la scala moltiplica in modo uniforme. */
+  --tavolo-size: calc(clamp(38px, 12cqw, 66px) * var(--tavolo-scala, 1));
   position: absolute; transform: translate(-50%, -50%);
   display: grid; justify-items: center;
   background: none; border: none; padding: 0; cursor: pointer;
@@ -365,11 +393,14 @@ img { max-width: 100%; display: block; }
   background: var(--paper); border: 1px solid var(--rose-soft); border-radius: var(--radius);
   box-shadow: var(--shadow); padding: 1.2rem; margin-bottom: 1rem; text-align: center;
 }
-.scheda__logo { height: 76px; display: grid; place-items: center; margin-bottom: 0.5rem; }
-.scheda__logo img { max-height: 76px; width: auto; object-fit: contain; }
-.scheda__logo .tavolo__iniziali { font-size: 2.2rem; }
+/* Quando si seleziona una cantina, nella scheda comanda il LOGO: grande e
+   centrale, con il nome sotto in tono minore (è il logo che si riconosce a
+   colpo d'occhio sul tableau). */
+.scheda__logo { height: 132px; display: grid; place-items: center; margin-bottom: 0.4rem; }
+.scheda__logo img { max-height: 132px; max-width: 100%; width: auto; object-fit: contain; }
+.scheda__logo .tavolo__iniziali { font-size: 3.2rem; }
 .scheda__ruolo { font-family: var(--font-script); font-size: 1.5rem; color: var(--rose); line-height: 1; }
-.scheda__nome { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 600; color: var(--wine-deep); }
+.scheda__nome { font-family: var(--font-serif); font-size: 1.2rem; font-weight: 600; color: var(--ink-soft); letter-spacing: 0.02em; }
 .scheda__meta {
   display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.7rem;
   width: max-content; max-width: 100%; margin: 0.7rem auto 0; text-align: left;
@@ -475,7 +506,56 @@ img { max-width: 100%; display: block; }
 .space-card__count { font-size: 0.8rem; color: var(--ink-soft); }
 .spaces__empty { grid-column: 1 / -1; text-align: center; color: var(--ink-soft); padding: 3rem 1rem; }
 
-.galleria__actions { display: flex; justify-content: center; margin-bottom: 2rem; }
+/* Moderazione sposi (galleria.html?admin e spazio.html?admin). Sobria ma
+   riconoscibile: banda rosa vino con l'avviso, ✕ tondo in alto a destra sulle
+   card della galleria. */
+.modera-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem;
+  margin-bottom: 1.2rem; padding: 0.6rem 0.9rem;
+  background: #fdf3f5; border: 1px solid var(--rose); border-radius: var(--radius);
+}
+.modera-bar__tag { font-weight: 600; color: var(--wine); font-size: 0.85rem; }
+.modera-bar__hint { color: var(--ink-soft); font-size: 0.85rem; flex: 1; min-width: 120px; }
+.modera-bar__del { padding: 0.45rem 0.9rem; font-size: 0.85rem; color: var(--wine); border-color: var(--wine); }
+.space-card { position: relative; }
+.space-admin-del {
+  position: absolute; top: 0.5rem; right: 0.5rem; z-index: 2;
+  width: 2rem; height: 2rem; display: grid; place-items: center;
+  border: none; border-radius: 999px; cursor: pointer; padding: 0;
+  background: rgba(140, 47, 57, 0.92); color: #fff; font-size: 0.9rem; line-height: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.space-admin-del:hover { background: var(--wine-deep); }
+.space-admin-del:disabled { opacity: 0.6; cursor: default; }
+
+.galleria__actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.9rem; margin-bottom: 2rem; }
+
+/* Tile "+" per creare uno spazio: prima cella della griglia, forma delle card
+   ma tratteggiata e invitante. Si allunga fino all'altezza delle card vicine. */
+.space-create {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem;
+  min-height: 170px; cursor: pointer; text-align: center; padding: 1rem;
+  background: var(--paper); color: var(--wine-deep);
+  border: 2px dashed var(--rose); border-radius: var(--radius);
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.space-create:hover { transform: translateY(-3px); background: #fdf3f5; border-color: var(--wine); }
+.space-create:focus-visible { outline: 3px solid var(--rose); outline-offset: 2px; }
+.space-create__plus { font-size: 2.8rem; line-height: 1; font-weight: 300; }
+.space-create__label { font-family: var(--font-serif); font-weight: 600; font-size: 1rem; line-height: 1.2; }
+
+/* Link discreto (es. "Esci dal mio spazio"): un'azione secondaria, non un bottone pieno. */
+.link-quiet {
+  background: none; border: none; padding: 0.2rem 0.3rem; cursor: pointer;
+  color: var(--ink-soft); font-family: var(--font-sans); font-size: 0.85rem; text-decoration: underline;
+}
+.link-quiet:hover { color: var(--wine); }
+
+/* Invito allo sblocco sotto l'intestazione dello spazio (a chi non è proprietario). */
+.space-unlock { text-align: center; margin-bottom: 1.6rem; }
+.space-unlock-hint { text-align: center; color: var(--ink-soft); font-size: 0.9rem; margin: 0.5rem 0 0; }
+/* Azioni in fondo allo spazio: back link + "Esci" discreto, ben distanziati. */
+.space-foot { margin-top: 1.6rem; margin-bottom: 0; }
 
 /* =========================================================================
    Spazio singolo — griglia foto + upload (solo proprietario)
@@ -664,7 +744,7 @@ body { overflow-x: hidden; }
 .gq-sub { color: var(--ink-soft); margin-top: 0.4rem; }
 .gq-join { display: flex; gap: 0.5rem; max-width: 380px; margin: 1rem auto 0.6rem; }
 .gq-join input {
-  flex: 1; padding: 0.6rem 0.8rem; font-size: 1rem; font-family: var(--font-sans);
+  flex: 1; min-width: 0; padding: 0.6rem 0.8rem; font-size: 1rem; font-family: var(--font-sans);
   background: var(--cream); border: 2px solid var(--rose-soft); border-radius: 10px;
 }
 .gq-count { color: var(--ink-soft); font-size: 0.9rem; }

@@ -98,7 +98,7 @@ function initRegia(el, pin) {
 
   el.innerHTML = `<div class="ga-dash"></div>
     <div class="ga-controls"></div>
-    <label class="ga-switch"><input type="checkbox" id="ga-attivi"> <span>Giochi visibili agli invitati</span></label>
+    <label class="ga-switch"><input type="checkbox" id="ga-attivi"> <span>Gioco visibile agli invitati</span></label>
     <div class="ga-live"></div>`;
 
   const dash = el.querySelector(".ga-dash");
@@ -110,7 +110,7 @@ function initRegia(el, pin) {
   attivi.addEventListener("change", async () => {
     try {
       await tavoli.saveSettings(pin, { giochiAttivi: attivi.checked });
-      toast(attivi.checked ? "Giochi visibili agli invitati" : "Giochi nascosti");
+      toast(attivi.checked ? "Gioco visibile agli invitati" : "Gioco nascosto");
     } catch (err) {
       toast(err.message || "Impossibile salvare");
       attivi.checked = !attivi.checked;

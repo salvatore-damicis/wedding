@@ -9,7 +9,7 @@ const LINKS = [
   { href: "luoghi.html", label: "Luoghi" },
   { href: "tavoli.html", label: "Tavoli" },
   { href: "galleria.html", label: "Galleria" },
-  { href: "giochi.html", label: "Giochi" },
+  { href: "giochi.html", label: "Gioco" },
 ];
 
 function currentPage() {

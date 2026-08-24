@@ -18,6 +18,16 @@ import { tavoli as tavoliStore } from "./adapter.js";
 
 const LOGO_DIR = "assets/img/cantine/";
 
+/* Grandezza uniforme dei cerchi (sala.tavoloScala), limitata a un intervallo
+   sensato. Condivisa con l'editor (cursore) e ricalcata dal server in saveMap. */
+export const TAVOLO_SCALA_MIN = 0.6;
+export const TAVOLO_SCALA_MAX = 1.8;
+export function scalaTavoli(sala) {
+  const v = Number(sala?.tavoloScala);
+  if (!Number.isFinite(v) || v <= 0) return 1;
+  return Math.min(TAVOLO_SCALA_MAX, Math.max(TAVOLO_SCALA_MIN, v));
+}
+
 /* "Ca' del Bosco" -> "ca-del-bosco" (accenti e apostrofi via, spazi in -) */
 export function slugCantina(nome) {
   return String(nome)
@@ -235,6 +245,8 @@ export async function initTavoliView({ mapEl, elencoEl, schedaEl }) {
     // Rapporto larghezza/altezza: tiene la mappa in proporzione e permette al
     // CSS di limitarne l'altezza senza deformarla.
     mapEl.style.setProperty("--sala-ar", (sala.w / sala.h).toFixed(4));
+    // Grandezza uniforme dei cerchi, decisa dagli Sposi (default 1).
+    mapEl.style.setProperty("--tavolo-scala", String(scalaTavoli(sala)));
     mapEl.innerHTML =
       salaSvg(sala) + map.tavoli.map((t) => tavoloHtml(t, cantinaDi(t), sala)).join("");
 
