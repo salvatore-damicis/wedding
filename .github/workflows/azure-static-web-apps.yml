@@ -1,5 +1,9 @@
-name: Deploy sito su Azure Static Web Apps
+name: Build e Deploy su Azure Static Web Apps
 
+# L'infrastruttura è creata a mano con Terraform da locale (vedi docs/DEPLOY.md).
+# Questo workflow si occupa SOLO di buildare e pubblicare il contenuto (sito +
+# Functions) ad ogni push su main, usando il deployment token della SWA salvato
+# come secret del repo (AZURE_STATIC_WEB_APPS_API_TOKEN = output `swa_api_key`).
 on:
   push:
     branches: [main]
@@ -12,8 +16,6 @@ permissions:
   pull-requests: write # per i commenti con le anteprime delle PR
 
 jobs:
-  # Nome job "build_and_deploy_job": è quello che la SWA CLI si aspetta quando
-  # legge questo file in locale (`swa start`); su GitHub il nome è indifferente.
   build_and_deploy_job:
     if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
     runs-on: ubuntu-latest
@@ -31,6 +33,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
           # Sito statico multi-pagina alla radice: niente build del frontend.
+          # Le Functions in /api vengono buildate dall'azione.
           app_location: "/"
           api_location: "api"
           output_location: ""
