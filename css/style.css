@@ -456,6 +456,22 @@ img { max-width: 100%; display: block; }
 }
 .ingresso-handle.is-dragging { cursor: grabbing; background: rgba(192, 120, 138, 0.38); }
 
+/* Griglia magnetica (aiuto d'editing): sotto ai tavoli, sopra al pavimento —
+   niente z-index, decide l'ordine nel DOM (montata subito dopo la sala). */
+.editor-griglia { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.editor-griglia line { stroke: var(--rose-soft); stroke-width: 0.3; opacity: 0.7; }
+
+/* Guide di allineamento: compaiono solo mentre un tavolo si aggancia a un
+   altro. Sopra al tavolo trascinato (z-index 5) per restare visibili. */
+.snap-guida { position: absolute; z-index: 6; pointer-events: none; background: var(--wine); }
+.snap-guida--v { top: 0; bottom: 0; width: 2px; transform: translateX(-50%); }
+.snap-guida--h { left: 0; right: 0; height: 2px; transform: translateY(-50%); }
+
+.editor-bar #ed-griglia.is-on {
+  background: var(--wine); color: var(--paper); border-color: var(--wine);
+}
+.editor-form__check { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+
 .editor-form { text-align: left; }
 .editor-form__titolo {
   font-family: var(--font-serif); font-size: 1.2rem; font-weight: 600;

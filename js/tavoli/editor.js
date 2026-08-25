@@ -25,6 +25,15 @@ const TIPI = [
   ["staff", "Tavolo staff"],
 ];
 
+/* Aggancio in fase di trascinamento (ADR-0004, aiuti all'allineamento):
+   - SNAP_PX è la distanza di cattura, misurata in PIXEL schermo e riconvertita
+     in unità di sala per ogni asse, così l'aggancio "tira" allo stesso modo su
+     una sala da 40 o da 180 unità;
+   - la griglia è solo un aiuto d'editing: non entra nella mappa salvata (il
+     server la ripulirebbe), ma la preferenza è ricordata sul dispositivo. */
+const SNAP_PX = 7;
+const GRIGLIA_KEY = "tavoli.griglia";
+
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
@@ -115,6 +124,23 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
   let sporco = false;
   let salvato = JSON.stringify(map); // per Annulla e per sapere cosa è cambiato
 
+  /* Preferenza griglia (per dispositivo). Passo di default legato alla sala:
+     ~1/8 del lato minore, così parte "utile" su stanze piccole o metriche. */
+  let grigliaAttiva = false;
+  let grigliaPasso = Math.max(1, Math.round(Math.min(map.sala.w, map.sala.h) / 8));
+  try {
+    const g = JSON.parse(localStorage.getItem(GRIGLIA_KEY) || "null");
+    if (g) {
+      grigliaAttiva = !!g.attiva;
+      if (Number(g.passo) > 0) grigliaPasso = Math.round(g.passo);
+    }
+  } catch {}
+  const salvaGrigliaPref = () => {
+    try {
+      localStorage.setItem(GRIGLIA_KEY, JSON.stringify({ attiva: grigliaAttiva, passo: grigliaPasso }));
+    } catch {}
+  };
+
   contenitore.classList.add("is-editing");
 
   /* --- barra degli strumenti --- */
@@ -126,6 +152,7 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
       <button class="btn btn-outline" id="ed-undo" type="button" title="Annulla azione (Ctrl+Z)" aria-label="Annulla azione">↶</button>
       <button class="btn btn-outline" id="ed-redo" type="button" title="Ripristina azione (Ctrl+Y)" aria-label="Ripristina azione">↷</button>
       <button class="btn btn-outline" id="ed-sala" type="button">Sala</button>
+      <button class="btn btn-outline" id="ed-griglia" type="button" aria-pressed="false" title="Griglia magnetica: aggancia i tavoli a una griglia regolare">⊞ Griglia</button>
       <button class="btn btn-outline" id="ed-aggiungi" type="button">+ Tavolo</button>
       <button class="btn btn-outline" id="ed-annulla" type="button">Annulla</button>
       <button class="btn btn-primary" id="ed-salva" type="button">Salva</button>
@@ -134,6 +161,8 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
   contenitore.prepend(barra);
   const stato = barra.querySelector("#ed-stato");
   montaManigliaIngresso();
+  montaGriglia();
+  aggiornaGriglia();
 
   /* --- cronologia per undo/redo ---
      Ogni modifica committata (ogni segnaSporco(true)) registra uno snapshot
@@ -196,6 +225,7 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
   function ridisegna() {
     vista.render();
     montaManigliaIngresso();
+    montaGriglia();
   }
 
   function montaManigliaIngresso() {
@@ -206,6 +236,36 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
     el.setAttribute("aria-hidden", "true");
     posizionaPunto(el, ing);
     mapEl.appendChild(el);
+  }
+
+  /* Griglia magnetica: overlay di sottili linee, ridisegnato a ogni ridisegna()
+     perché vista.render() riscrive l'HTML della mappa. Va INSERITO subito dopo
+     la sala (che ha il fondo pieno) e prima dei tavoli, così resta sotto ai
+     cerchi ma sopra al pavimento. */
+  function montaGriglia() {
+    mapEl.querySelector(".editor-griglia")?.remove();
+    if (!grigliaAttiva) return;
+    const { w, h } = map.sala;
+    const p = Math.max(1, grigliaPasso);
+    let linee = "";
+    for (let x = p; x < w; x += p) linee += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" />`;
+    for (let y = p; y < h; y += p) linee += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" />`;
+    const svg = `<svg class="editor-griglia" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">${linee}</svg>`;
+    const sala = mapEl.querySelector(".mappa__sala");
+    if (sala) sala.insertAdjacentHTML("afterend", svg);
+    else mapEl.insertAdjacentHTML("afterbegin", svg);
+  }
+
+  /* Riallinea comando in barra e (se aperto) la casella nel pannello Sala allo
+     stato corrente, salva la preferenza e ridisegna la griglia. */
+  function aggiornaGriglia() {
+    const b = barra.querySelector("#ed-griglia");
+    b.classList.toggle("is-on", grigliaAttiva);
+    b.setAttribute("aria-pressed", String(grigliaAttiva));
+    const chk = schedaEl.querySelector("#ed-griglia-attiva");
+    if (chk) chk.checked = grigliaAttiva;
+    salvaGrigliaPref();
+    montaGriglia();
   }
 
   /* --- ridimensionamento della sala: tutto scala in proporzione --- */
@@ -250,6 +310,14 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
         <input id="ed-scala" type="range" min="${TAVOLO_SCALA_MIN}" max="${TAVOLO_SCALA_MAX}" step="0.05" value="${scalaTavoli(map.sala)}" />
       </div>
       <p class="editor-form__nota">Vale per tutti i cerchi allo stesso modo: trascina per rimpicciolire o ingrandire.</p>
+      <div class="field">
+        <label class="editor-form__check"><input type="checkbox" id="ed-griglia-attiva" ${grigliaAttiva ? "checked" : ""} /> Griglia magnetica</label>
+      </div>
+      <div class="field">
+        <label for="ed-griglia-passo">Passo della griglia <span id="ed-griglia-passo-val">${grigliaPasso}</span></label>
+        <input id="ed-griglia-passo" type="range" min="1" max="${Math.max(2, Math.round(Math.min(map.sala.w, map.sala.h) / 3))}" step="1" value="${grigliaPasso}" />
+      </div>
+      <p class="editor-form__nota">Trascinando, i tavoli si agganciano ai nodi della griglia. Le guide verso gli altri tavoli sono sempre attive: avvicina un tavolo all'asse di un altro e si allineano da soli (compare una linea).</p>
     </div>`;
 
     const applica = () => {
@@ -276,6 +344,20 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
       mapEl.style.setProperty("--tavolo-scala", String(v));
     });
     scala.addEventListener("change", () => segnaSporco());
+
+    // Griglia: aiuto d'editing, non modifica la mappa (niente segnaSporco).
+    schedaEl.querySelector("#ed-griglia-attiva").addEventListener("change", (e) => {
+      grigliaAttiva = e.target.checked;
+      aggiornaGriglia();
+    });
+    const passo = schedaEl.querySelector("#ed-griglia-passo");
+    const passoVal = schedaEl.querySelector("#ed-griglia-passo-val");
+    passo.addEventListener("input", () => {
+      grigliaPasso = Math.max(1, Math.round(Number(passo.value)));
+      passoVal.textContent = String(grigliaPasso);
+      montaGriglia();
+    });
+    passo.addEventListener("change", salvaGrigliaPref);
   }
 
   /* --- form del tavolo selezionato --- */
@@ -453,6 +535,78 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
   /* --- trascinamento (mouse e dito) --- */
   let trascinato = null;
 
+  /* Due sottili linee (verticale + orizzontale) mostrate solo quando il tavolo
+     trascinato si allinea a un altro. Vivono nella mappa per il tempo del
+     gesto: create al pointerdown, rimosse al rilascio. */
+  function creaGuide() {
+    const v = document.createElement("span");
+    v.className = "snap-guida snap-guida--v";
+    v.hidden = true;
+    const h = document.createElement("span");
+    h.className = "snap-guida snap-guida--h";
+    h.hidden = true;
+    mapEl.append(v, h);
+    return { v, h };
+  }
+
+  function aggiornaGuide(gx, gy) {
+    const g = trascinato?.guide;
+    if (!g) return;
+    if (gx == null) g.v.hidden = true;
+    else {
+      g.v.hidden = false;
+      g.v.style.left = `${((gx / map.sala.w) * 100).toFixed(2)}%`;
+    }
+    if (gy == null) g.h.hidden = true;
+    else {
+      g.h.hidden = false;
+      g.h.style.top = `${((gy / map.sala.h) * 100).toFixed(2)}%`;
+    }
+  }
+
+  /* Aggancio di un punto trascinato. Per ciascun asse, in ordine di priorità:
+     1) il centro di un altro tavolo entro SNAP_PX (→ guida visiva);
+     2) il nodo più vicino della griglia, se attiva, entro SNAP_PX;
+     3) libero. La tolleranza è in pixel schermo, riconvertita in unità di sala
+     per asse (le due dimensioni possono avere scala diversa). */
+  function agganciaAllineamento(punto, idEscluso) {
+    const { w, h } = map.sala;
+    const rect = trascinato?.rect || mapEl.getBoundingClientRect();
+    const tolX = SNAP_PX * (w / rect.width);
+    const tolY = SNAP_PX * (h / rect.height);
+    let x = punto.x;
+    let y = punto.y;
+    let guidaX = null;
+    let guidaY = null;
+
+    let distX = tolX;
+    let distY = tolY;
+    for (const t of map.tavoli) {
+      if (t.id === idEscluso) continue;
+      const dx = Math.abs(t.x - punto.x);
+      if (dx < distX) {
+        distX = dx;
+        guidaX = t.x;
+      }
+      const dy = Math.abs(t.y - punto.y);
+      if (dy < distY) {
+        distY = dy;
+        guidaY = t.y;
+      }
+    }
+    if (guidaX != null) x = guidaX;
+    else if (grigliaAttiva) {
+      const g = Math.round(punto.x / grigliaPasso) * grigliaPasso;
+      if (Math.abs(g - punto.x) <= tolX) x = Math.min(w, Math.max(0, g));
+    }
+    if (guidaY != null) y = guidaY;
+    else if (grigliaAttiva) {
+      const g = Math.round(punto.y / grigliaPasso) * grigliaPasso;
+      if (Math.abs(g - punto.y) <= tolY) y = Math.min(h, Math.max(0, g));
+    }
+    return { x, y, guidaX, guidaY };
+  }
+
   /* Si trascinano due cose: i tavoli (aggancio a 1 unità) e l'ingresso
      (aggancio al muro più vicino). Stesso meccanismo, rilascio diverso. */
   mapEl.addEventListener("pointerdown", (e) => {
@@ -474,6 +628,9 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
       partenzaY: e.clientY,
       origine,
       mosso: false,
+      // Le guide di allineamento riguardano solo i tavoli, non l'ingresso
+      // (che ha un vincolo suo: sta su un muro).
+      guide: maniglia ? null : creaGuide(),
     };
     el.setPointerCapture(e.pointerId);
     el.classList.add("is-dragging");
@@ -491,15 +648,27 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
       x: Math.min(map.sala.w, Math.max(0, origine.x + ((e.clientX - partenzaX) / rect.width) * map.sala.w)),
       y: Math.min(map.sala.h, Math.max(0, origine.y + ((e.clientY - partenzaY) / rect.height) * map.sala.h)),
     };
-    if (trascinato.ingresso) map.sala.ingresso = punto;
-    else Object.assign(t, punto);
-    posizionaPunto(el, punto);
+    if (trascinato.ingresso) {
+      map.sala.ingresso = punto;
+      posizionaPunto(el, punto);
+    } else {
+      // Aggancio magnetico: prima agli altri tavoli (guida), poi alla griglia.
+      const s = agganciaAllineamento(punto, t.id);
+      t.x = s.x;
+      t.y = s.y;
+      posizionaPunto(el, t);
+      aggiornaGuide(s.guidaX, s.guidaY);
+    }
   });
 
   const fineTrascinamento = (e) => {
     if (!trascinato) return;
-    const { el, t, mosso, ingresso } = trascinato;
+    const { el, t, mosso, ingresso, guide } = trascinato;
     el.classList.remove("is-dragging");
+    if (guide) {
+      guide.v.remove();
+      guide.h.remove();
+    }
     trascinato = null;
     if (e) e.preventDefault();
 
@@ -583,6 +752,11 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
 
   /* --- azioni della barra --- */
   barra.querySelector("#ed-sala").addEventListener("click", mostraFormSala);
+
+  barra.querySelector("#ed-griglia").addEventListener("click", () => {
+    grigliaAttiva = !grigliaAttiva;
+    aggiornaGriglia();
+  });
 
   barra.querySelector("#ed-undo").addEventListener("click", undo);
   barra.querySelector("#ed-redo").addEventListener("click", redo);
