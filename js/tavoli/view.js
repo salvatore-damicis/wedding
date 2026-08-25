@@ -88,7 +88,6 @@ function salaSvg(sala) {
 
   let varco;
   let freccia;
-  let etichetta;
 
   if (lato === "alto" || lato === "basso") {
     const muroY = lato === "alto" ? 1 : h - 1;
@@ -98,7 +97,6 @@ function salaSvg(sala) {
     freccia =
       `<line x1="${ing.x}" y1="${muroY}" x2="${ing.x}" y2="${puntaY}" />` +
       `<polyline points="${ing.x - 2.6},${puntaY - 2.8 * verso} ${ing.x},${puntaY} ${ing.x + 2.6},${puntaY - 2.8 * verso}" />`;
-    etichetta = `<text x="${ing.x}" y="${puntaY + 4.2 * verso}">INGRESSO</text>`;
   } else {
     const muroX = lato === "sinistra" ? 1 : w - 1;
     const verso = lato === "sinistra" ? 1 : -1;
@@ -107,18 +105,58 @@ function salaSvg(sala) {
     freccia =
       `<line x1="${muroX}" y1="${ing.y}" x2="${puntaX}" y2="${ing.y}" />` +
       `<polyline points="${puntaX - 2.8 * verso},${ing.y - 2.6} ${puntaX},${ing.y} ${puntaX - 2.8 * verso},${ing.y + 2.6}" />`;
-    // Testo affiancato alla freccia: l'ancoraggio va in style, perché un
-    // attributo di presentazione perderebbe contro il text-anchor del CSS.
-    etichetta = `<text x="${puntaX + 2 * verso}" y="${ing.y - 3.5}" style="text-anchor:${
-      verso > 0 ? "start" : "end"
-    }">INGRESSO</text>`;
   }
 
+  // L'etichetta "INGRESSO" NON è più nell'SVG: è un'etichetta del layer HTML
+  // (vedi etichetteHtml), così gli Sposi possono spostarla in modifica.
   return `<svg class="mappa__sala" viewBox="0 0 ${w} ${h}" aria-hidden="true" focusable="false">
     <rect class="mappa__muri" x="1" y="1" width="${w - 2}" height="${h - 2}" rx="3" />
     ${varco}
-    <g class="mappa__ingresso">${freccia}${etichetta}</g>
+    <g class="mappa__ingresso">${freccia}</g>
   </svg>`;
+}
+
+/* ---- ETICHETTE (layer HTML sopra la mappa) ------------------------------
+   "INGRESSO" e "Sposi" sono scritte posizionabili: di default stanno dove
+   stavano prima (etichettaIngressoDefault / sopra al tavolo sposi), ma gli
+   Sposi possono trascinarle in modifica e la posizione si salva
+   (sala.ingressoLabel, tavolo.ruoloPos). Senza override l'aspetto è identico
+   a prima, quindi la vista degli invitati non cambia. */
+export function etichettaIngressoDefault(sala) {
+  const { w, h } = sala;
+  const ing = sala.ingresso || { x: w / 2, y: h };
+  const lato = muroPiuVicino(ing, sala);
+  const dentro = 8;
+  if (lato === "alto") return { x: ing.x, y: dentro + 5 };
+  if (lato === "basso") return { x: ing.x, y: h - dentro - 5 };
+  if (lato === "sinistra") return { x: dentro + 7, y: ing.y };
+  return { x: w - dentro - 7, y: ing.y };
+}
+
+function etichetteHtml(map) {
+  const { sala } = map;
+  const pos = (p) =>
+    `left:${((p.x / sala.w) * 100).toFixed(2)}%;top:${((p.y / sala.h) * 100).toFixed(2)}%`;
+
+  const parti = [];
+  const iPos = sala.ingressoLabel || etichettaIngressoDefault(sala);
+  parti.push(
+    `<span class="mappa__etichetta mappa__etichetta--ingresso" data-etichetta="ingresso" style="${pos(iPos)}">INGRESSO</span>`
+  );
+
+  for (const t of map.tavoli) {
+    if (t.tipo !== "sposi") continue;
+    const override = t.ruoloPos;
+    const p = override || { x: t.x, y: t.y };
+    // Senza override la scritta sta "sopra" al cerchio (offset in px via CSS,
+    // così resta a filo del cerchio a ogni scala); con override è centrata sul
+    // punto scelto.
+    const sopra = override ? "" : " mappa__etichetta--sopra";
+    parti.push(
+      `<span class="mappa__etichetta mappa__etichetta--ruolo${sopra}" data-etichetta="ruolo" data-id="${esc(t.id)}" style="${pos(p)}">Sposi</span>`
+    );
+  }
+  return parti.join("");
 }
 
 /* Sorgente del logo: prima l'URL caricato dall'editor (Blob o data-URL), poi il
@@ -152,9 +190,10 @@ function tavoloHtml(t, cantina, sala) {
 
   const nome = cantina?.nome || "Tavolo";
   const sposi = t.tipo === "sposi";
+  // La scritta "Sposi" è ora un'etichetta del layer (etichetteHtml), non più
+  // dentro al bottone: così è spostabile in modifica.
   return `<button type="button" class="tavolo${sposi ? " tavolo--sposi" : ""}" style="${style}"
       data-id="${esc(t.id)}" aria-pressed="false" aria-label="Tavolo ${esc(nome)}">
-    ${sposi ? '<span class="tavolo__ruolo">Sposi</span>' : ""}
     ${cerchioInterno(cantina, nome)}
   </button>`;
 }
@@ -248,7 +287,9 @@ export async function initTavoliView({ mapEl, elencoEl, schedaEl }) {
     // Grandezza uniforme dei cerchi, decisa dagli Sposi (default 1).
     mapEl.style.setProperty("--tavolo-scala", String(scalaTavoli(sala)));
     mapEl.innerHTML =
-      salaSvg(sala) + map.tavoli.map((t) => tavoloHtml(t, cantinaDi(t), sala)).join("");
+      salaSvg(sala) +
+      map.tavoli.map((t) => tavoloHtml(t, cantinaDi(t), sala)).join("") +
+      etichetteHtml(map);
 
     const apribili = map.tavoli.filter((t) => t.tipo !== "staff");
     const ordinati = [...apribili].sort((a, b) =>

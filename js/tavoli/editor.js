@@ -226,6 +226,7 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
     vista.render();
     montaManigliaIngresso();
     montaGriglia();
+    evidenziaSelezione();
   }
 
   function montaManigliaIngresso() {
@@ -534,6 +535,123 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
 
   /* --- trascinamento (mouse e dito) --- */
   let trascinato = null;
+  let marquee = null; // selezione a rettangolo su pavimento vuoto
+
+  /* --- selezione multipla ---------------------------------------------------
+     Set di id di tavoli. Con ≥2 selezionati compare il pannello Allinea /
+     Distribuisci e trascinandone uno si muovono tutti insieme. La selezione è
+     un aiuto d'editing: non entra nella mappa salvata. */
+  const selezione = new Set();
+
+  function elementiSelezione() {
+    return [...selezione].map((id) => map.tavoli.find((t) => t.id === id)).filter(Boolean);
+  }
+
+  function evidenziaSelezione() {
+    mapEl.querySelectorAll(".tavolo[data-id]").forEach((el) => {
+      el.classList.toggle("is-selezionato", selezione.has(el.dataset.id));
+    });
+  }
+
+  /* Applica lo stato corrente della selezione:
+       - ≥2 → pannello Allinea/Distribuisci (e spegne la selezione singola);
+       - 1  → resta evidenziato in attesa di altri (nessun pannello: distribuire
+              e allinear serve da 2 in su), così Shift+clic costruisce la scelta;
+       - 0  → chiude l'eventuale pannello.
+     La modifica di un singolo tavolo passa invece dal clic semplice, non da qui. */
+  function aggiornaModoSelezione() {
+    evidenziaSelezione();
+    if (selezione.size >= 2) {
+      vista.seleziona(null); // spegne l'eventuale selezione singola
+      evidenziaSelezione();
+      mostraPannelloSelezione();
+    } else if (schedaEl.querySelector(".editor-sel")) {
+      schedaEl.hidden = true;
+    }
+  }
+
+  function svuotaSelezione() {
+    if (!selezione.size) return;
+    selezione.clear();
+    evidenziaSelezione();
+    if (schedaEl.querySelector(".editor-sel")) schedaEl.hidden = true;
+  }
+
+  function mostraPannelloSelezione() {
+    const n = selezione.size;
+    const pochi = n < 3; // distribuire ha senso da 3 in su
+    schedaEl.hidden = false;
+    schedaEl.innerHTML = `<div class="editor-form editor-sel">
+      <h3 class="editor-form__titolo">${n} tavoli selezionati</h3>
+      <p class="editor-form__nota">Allinea o distribuisci i tavoli selezionati. Trascinane uno per spostarli tutti insieme.</p>
+      <div class="editor-sel__gruppo" role="group" aria-label="Allinea">
+        <span class="editor-sel__lab">Allinea</span>
+        <button class="btn btn-outline" type="button" data-al="sx" title="Bordi a sinistra" aria-label="Allinea a sinistra">⇤</button>
+        <button class="btn btn-outline" type="button" data-al="cx" title="Centri sull'asse verticale" aria-label="Allinea al centro orizzontale">↔</button>
+        <button class="btn btn-outline" type="button" data-al="dx" title="Bordi a destra" aria-label="Allinea a destra">⇥</button>
+        <button class="btn btn-outline" type="button" data-al="alto" title="In alto" aria-label="Allinea in alto">⤒</button>
+        <button class="btn btn-outline" type="button" data-al="cy" title="Centri sull'asse orizzontale" aria-label="Allinea al centro verticale">↕</button>
+        <button class="btn btn-outline" type="button" data-al="basso" title="In basso" aria-label="Allinea in basso">⤓</button>
+      </div>
+      <div class="editor-sel__gruppo" role="group" aria-label="Distribuisci">
+        <span class="editor-sel__lab">Distribuisci</span>
+        <button class="btn btn-outline" type="button" data-di="h" title="Spaziatura orizzontale uguale" aria-label="Distribuisci in orizzontale" ${pochi ? "disabled" : ""}>⇿</button>
+        <button class="btn btn-outline" type="button" data-di="v" title="Spaziatura verticale uguale" aria-label="Distribuisci in verticale" ${pochi ? "disabled" : ""}>⇳</button>
+      </div>
+      ${pochi ? `<p class="editor-form__nota">Per distribuire servono almeno 3 tavoli.</p>` : ""}
+      <button class="btn btn-outline" type="button" data-desel>Deseleziona</button>
+    </div>`;
+
+    schedaEl.querySelectorAll("[data-al]").forEach((b) =>
+      b.addEventListener("click", () => allinea(b.dataset.al))
+    );
+    schedaEl.querySelectorAll("[data-di]").forEach((b) =>
+      b.addEventListener("click", () => distribuisci(b.dataset.di))
+    );
+    schedaEl.querySelector("[data-desel]").addEventListener("click", svuotaSelezione);
+  }
+
+  // Allinea/distribuisci lavorano con 2 decimali (come il sanitizer del server):
+  // arrotondare a unità intere renderebbe la spaziatura visibilmente disuguale
+  // su sale piccole.
+  const r2 = (v) => Math.round(v * 100) / 100;
+
+  /* Allinea i centri dei tavoli selezionati al bordo/centro del loro riquadro
+     complessivo (bounding box). */
+  function allinea(modo) {
+    const sel = elementiSelezione();
+    if (sel.length < 2) return;
+    const xs = sel.map((t) => t.x);
+    const ys = sel.map((t) => t.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), cX = r2((minX + maxX) / 2);
+    const minY = Math.min(...ys), maxY = Math.max(...ys), cY = r2((minY + maxY) / 2);
+    for (const t of sel) {
+      if (modo === "sx") t.x = minX;
+      else if (modo === "dx") t.x = maxX;
+      else if (modo === "cx") t.x = cX;
+      else if (modo === "alto") t.y = minY;
+      else if (modo === "basso") t.y = maxY;
+      else if (modo === "cy") t.y = cY;
+    }
+    segnaSporco();
+    ridisegna();
+  }
+
+  /* Spaziatura uguale fra i centri: primo e ultimo restano fermi, i mezzani si
+     ridistribuiscono. */
+  function distribuisci(asse) {
+    const sel = elementiSelezione();
+    if (sel.length < 3) return;
+    const k = asse === "h" ? "x" : "y";
+    sel.sort((a, b) => a[k] - b[k]);
+    const primo = sel[0][k];
+    const passo = (sel[sel.length - 1][k] - primo) / (sel.length - 1);
+    sel.forEach((t, i) => {
+      t[k] = r2(primo + passo * i);
+    });
+    segnaSporco();
+    ridisegna();
+  }
 
   /* Due sottili linee (verticale + orizzontale) mostrate solo quando il tavolo
      trascinato si allinea a un altro. Vivono nella mappa per il tempo del
@@ -594,86 +712,270 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
         guidaY = t.y;
       }
     }
+    // aggX/aggY: l'asse è stato agganciato (a un tavolo o alla griglia). Serve al
+    // rilascio per NON arrotondare a intero un aggancio a coordinata frazionaria
+    // (es. dopo un "distribuisci"), che altrimenti si disallineerebbe di ~1 unità.
+    let aggX = guidaX != null;
+    let aggY = guidaY != null;
     if (guidaX != null) x = guidaX;
     else if (grigliaAttiva) {
       const g = Math.round(punto.x / grigliaPasso) * grigliaPasso;
-      if (Math.abs(g - punto.x) <= tolX) x = Math.min(w, Math.max(0, g));
+      if (Math.abs(g - punto.x) <= tolX) {
+        x = Math.min(w, Math.max(0, g));
+        aggX = true;
+      }
     }
     if (guidaY != null) y = guidaY;
     else if (grigliaAttiva) {
       const g = Math.round(punto.y / grigliaPasso) * grigliaPasso;
-      if (Math.abs(g - punto.y) <= tolY) y = Math.min(h, Math.max(0, g));
+      if (Math.abs(g - punto.y) <= tolY) {
+        y = Math.min(h, Math.max(0, g));
+        aggY = true;
+      }
     }
-    return { x, y, guidaX, guidaY };
+    return { x, y, guidaX, guidaY, aggX, aggY };
   }
 
-  /* Si trascinano due cose: i tavoli (aggancio a 1 unità) e l'ingresso
-     (aggancio al muro più vicino). Stesso meccanismo, rilascio diverso. */
+  /* Si trascinano più cose, distinte da `tipo`:
+       - "etichetta"  → le scritte INGRESSO / Sposi (posizione libera);
+       - "ingresso"   → la maniglia dell'ingresso (aggancio al muro);
+       - "tavolo"     → un tavolo singolo (aggancio magnetico + guide);
+       - "gruppo"     → tutti i tavoli selezionati insieme (nessun aggancio).
+     Sul pavimento vuoto parte invece il marquee di selezione. */
   mapEl.addEventListener("pointerdown", (e) => {
+    const etichetta = e.target.closest(".mappa__etichetta");
     const maniglia = e.target.closest(".ingresso-handle");
-    const el = maniglia || e.target.closest(".tavolo[data-id]");
-    if (!el) return;
-    const t = maniglia ? null : map.tavoli.find((x) => x.id === el.dataset.id);
-    if (!maniglia && !t) return;
-    // Blocca sul nascere il drag&drop nativo (immagini) e la selezione del
-    // testo: il gesto appartiene all'editor, non al browser.
+    const tavoloEl = e.target.closest(".tavolo[data-id]");
+    const rect = mapEl.getBoundingClientRect();
+
+    // Blocca il drag&drop nativo e la selezione del testo.
+    if (etichetta || maniglia || tavoloEl) e.preventDefault();
+
+    if (etichetta) {
+      // Posizione visiva attuale in unità: getBoundingClientRect tiene conto
+      // anche dell'offset "sopra al cerchio" del default, così non c'è scatto.
+      const r = etichetta.getBoundingClientRect();
+      const origine = {
+        x: ((r.left + r.width / 2 - rect.left) / rect.width) * map.sala.w,
+        y: ((r.top + r.height / 2 - rect.top) / rect.height) * map.sala.h,
+      };
+      trascinato = {
+        tipo: "etichetta",
+        el: etichetta,
+        etichettaTipo: etichetta.dataset.etichetta,
+        etichettaId: etichetta.dataset.id || null,
+        rect,
+        partenzaX: e.clientX,
+        partenzaY: e.clientY,
+        origine,
+        mosso: false,
+      };
+      etichetta.classList.add("is-dragging"); // forza il transform base (niente --sopra)
+      posizionaPunto(etichetta, origine);
+      etichetta.setPointerCapture(e.pointerId);
+      return;
+    }
+
+    if (maniglia) {
+      trascinato = {
+        tipo: "ingresso",
+        el: maniglia,
+        rect,
+        partenzaX: e.clientX,
+        partenzaY: e.clientY,
+        origine: { ...map.sala.ingresso },
+        mosso: false,
+      };
+      maniglia.setPointerCapture(e.pointerId);
+      maniglia.classList.add("is-dragging");
+      return;
+    }
+
+    if (tavoloEl) {
+      const t = map.tavoli.find((x) => x.id === tavoloEl.dataset.id);
+      if (!t) return;
+      const mod = e.shiftKey || e.ctrlKey || e.metaKey;
+      if (mod) {
+        // Aggiunge/toglie dalla selezione, senza avviare un trascinamento.
+        if (selezione.has(t.id)) selezione.delete(t.id);
+        else selezione.add(t.id);
+        aggiornaModoSelezione();
+        return;
+      }
+      if (selezione.has(t.id) && selezione.size >= 2) {
+        // Trascinamento di gruppo: muove tutti i selezionati insieme.
+        trascinato = {
+          tipo: "gruppo",
+          el: tavoloEl,
+          rect,
+          partenzaX: e.clientX,
+          partenzaY: e.clientY,
+          origini: elementiSelezione().map((tt) => ({ t: tt, x0: tt.x, y0: tt.y })),
+          mosso: false,
+        };
+        tavoloEl.setPointerCapture(e.pointerId);
+        tavoloEl.classList.add("is-dragging");
+        return;
+      }
+      // Trascinamento singolo: esce da un'eventuale selezione multipla.
+      if (selezione.size) svuotaSelezione();
+      trascinato = {
+        tipo: "tavolo",
+        el: tavoloEl,
+        t,
+        rect,
+        partenzaX: e.clientX,
+        partenzaY: e.clientY,
+        origine: { x: t.x, y: t.y },
+        mosso: false,
+        guide: creaGuide(),
+      };
+      tavoloEl.setPointerCapture(e.pointerId);
+      tavoloEl.classList.add("is-dragging");
+      return;
+    }
+
+    // Pavimento vuoto → marquee di selezione (Shift/Ctrl = aggiunge).
     e.preventDefault();
-    const origine = t ? { x: t.x, y: t.y } : { ...map.sala.ingresso };
-    trascinato = {
-      el,
-      t,
-      ingresso: !!maniglia,
-      rect: mapEl.getBoundingClientRect(),
+    const box = document.createElement("div");
+    box.className = "marquee";
+    mapEl.appendChild(box);
+    marquee = {
+      box,
+      rect,
+      pointerId: e.pointerId,
       partenzaX: e.clientX,
       partenzaY: e.clientY,
-      origine,
+      aggiungi: e.shiftKey || e.ctrlKey || e.metaKey,
       mosso: false,
-      // Le guide di allineamento riguardano solo i tavoli, non l'ingresso
-      // (che ha un vincolo suo: sta su un muro).
-      guide: maniglia ? null : creaGuide(),
     };
-    el.setPointerCapture(e.pointerId);
-    el.classList.add("is-dragging");
+    mapEl.setPointerCapture(e.pointerId);
   });
 
   mapEl.addEventListener("pointermove", (e) => {
+    if (marquee) {
+      const dx = e.clientX - marquee.partenzaX;
+      const dy = e.clientY - marquee.partenzaY;
+      if (!marquee.mosso && Math.hypot(dx, dy) > 4) marquee.mosso = true;
+      if (!marquee.mosso) return;
+      e.preventDefault();
+      Object.assign(marquee.box.style, {
+        left: `${Math.min(marquee.partenzaX, e.clientX) - marquee.rect.left}px`,
+        top: `${Math.min(marquee.partenzaY, e.clientY) - marquee.rect.top}px`,
+        width: `${Math.abs(dx)}px`,
+        height: `${Math.abs(dy)}px`,
+      });
+      return;
+    }
     if (!trascinato) return;
-    const { rect, t, el, partenzaX, partenzaY, origine } = trascinato;
+    const { rect, partenzaX, partenzaY } = trascinato;
     if (!trascinato.mosso && Math.hypot(e.clientX - partenzaX, e.clientY - partenzaY) > 4) {
       trascinato.mosso = true;
     }
     if (!trascinato.mosso) return;
     e.preventDefault();
-    const punto = {
-      x: Math.min(map.sala.w, Math.max(0, origine.x + ((e.clientX - partenzaX) / rect.width) * map.sala.w)),
-      y: Math.min(map.sala.h, Math.max(0, origine.y + ((e.clientY - partenzaY) / rect.height) * map.sala.h)),
-    };
-    if (trascinato.ingresso) {
-      map.sala.ingresso = punto;
-      posizionaPunto(el, punto);
-    } else {
-      // Aggancio magnetico: prima agli altri tavoli (guida), poi alla griglia.
-      const s = agganciaAllineamento(punto, t.id);
-      t.x = s.x;
-      t.y = s.y;
-      posizionaPunto(el, t);
-      aggiornaGuide(s.guidaX, s.guidaY);
+    const dux = ((e.clientX - partenzaX) / rect.width) * map.sala.w;
+    const duy = ((e.clientY - partenzaY) / rect.height) * map.sala.h;
+    const dentro = (v, max, base) => Math.min(max, Math.max(0, base + v));
+
+    if (trascinato.tipo === "gruppo") {
+      // Sposta il blocco, limitando il delta perché nessun tavolo esca.
+      const xs0 = trascinato.origini.map((o) => o.x0);
+      const ys0 = trascinato.origini.map((o) => o.y0);
+      const ddx = Math.max(-Math.min(...xs0), Math.min(map.sala.w - Math.max(...xs0), dux));
+      const ddy = Math.max(-Math.min(...ys0), Math.min(map.sala.h - Math.max(...ys0), duy));
+      trascinato.ddx = ddx;
+      trascinato.ddy = ddy;
+      for (const o of trascinato.origini) {
+        o.t.x = o.x0 + ddx;
+        o.t.y = o.y0 + ddy;
+        const el = mapEl.querySelector(`.tavolo[data-id="${CSS.escape(o.t.id)}"]`);
+        if (el) posizionaPunto(el, o.t);
+      }
+      return;
     }
+
+    const punto = {
+      x: dentro(dux, map.sala.w, trascinato.origine.x),
+      y: dentro(duy, map.sala.h, trascinato.origine.y),
+    };
+
+    if (trascinato.tipo === "etichetta") {
+      trascinato.punto = punto;
+      posizionaPunto(trascinato.el, punto);
+      return;
+    }
+    if (trascinato.tipo === "ingresso") {
+      map.sala.ingresso = punto;
+      posizionaPunto(trascinato.el, punto);
+      return;
+    }
+    // tavolo singolo: aggancio magnetico (guide + griglia).
+    const s = agganciaAllineamento(punto, trascinato.t.id);
+    trascinato.t.x = s.x;
+    trascinato.t.y = s.y;
+    trascinato.aggX = s.aggX;
+    trascinato.aggY = s.aggY;
+    posizionaPunto(trascinato.el, trascinato.t);
+    aggiornaGuide(s.guidaX, s.guidaY);
   });
 
   const fineTrascinamento = (e) => {
+    // Fine del marquee: seleziona i tavoli col centro dentro il rettangolo.
+    if (marquee) {
+      const { box, mosso, aggiungi, pointerId } = marquee;
+      const r = box.getBoundingClientRect();
+      box.remove();
+      marquee = null;
+      try {
+        mapEl.releasePointerCapture(pointerId);
+      } catch {}
+      if (!mosso) {
+        svuotaSelezione(); // clic a vuoto = deseleziona
+        return;
+      }
+      if (!aggiungi) selezione.clear();
+      map.tavoli.forEach((t) => {
+        const el = mapEl.querySelector(`.tavolo[data-id="${CSS.escape(t.id)}"]`);
+        if (!el) return;
+        const c = el.getBoundingClientRect();
+        const cx = c.left + c.width / 2;
+        const cy = c.top + c.height / 2;
+        if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) selezione.add(t.id);
+      });
+      aggiornaModoSelezione();
+      return;
+    }
+
     if (!trascinato) return;
-    const { el, t, mosso, ingresso, guide } = trascinato;
-    el.classList.remove("is-dragging");
-    if (guide) {
-      guide.v.remove();
-      guide.h.remove();
+    const tr = trascinato;
+    tr.el.classList.remove("is-dragging");
+    if (tr.guide) {
+      tr.guide.v.remove();
+      tr.guide.h.remove();
     }
     trascinato = null;
     if (e) e.preventDefault();
 
-    if (ingresso) {
-      if (!mosso) return;
+    if (tr.tipo === "etichetta") {
+      if (!tr.mosso) {
+        ridisegna(); // clic senza spostamento: ripristina la posizione di default
+        return;
+      }
+      const p = tr.punto || tr.origine;
+      const pos = { x: Math.round(p.x), y: Math.round(p.y) };
+      if (tr.etichettaTipo === "ingresso") map.sala.ingressoLabel = pos;
+      else {
+        const t = map.tavoli.find((x) => x.id === tr.etichettaId);
+        if (t) t.ruoloPos = pos;
+      }
+      segnaSporco();
+      ridisegna();
+      return;
+    }
+
+    if (tr.tipo === "ingresso") {
+      if (!tr.mosso) return;
       // Un ingresso sta su un muro per definizione: il vincolo lavora a favore.
       map.sala.ingresso = agganciaAlMuro(map.sala.ingresso, map.sala);
       segnaSporco();
@@ -681,15 +983,34 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
       return;
     }
 
-    if (mosso) {
-      // Aggancio a 1 unità: i tavoli restano allineati invece di finire a 43,7.
-      t.x = Math.round(t.x);
-      t.y = Math.round(t.y);
-      posizionaPunto(el, t);
+    if (tr.tipo === "gruppo") {
+      if (tr.mosso) {
+        // Arrotondo il DELTA (non ogni tavolo): la spaziatura del blocco resta
+        // identica anche dopo un eventuale allinea/distribuisci precedente.
+        const ddx = r2(tr.ddx || 0);
+        const ddy = r2(tr.ddy || 0);
+        tr.origini.forEach((o) => {
+          o.t.x = r2(o.x0 + ddx);
+          o.t.y = r2(o.y0 + ddy);
+        });
+        segnaSporco();
+        ridisegna(); // mantiene la selezione (evidenziaSelezione)
+      }
+      return;
+    }
+
+    // tavolo singolo
+    if (tr.mosso) {
+      // Asse agganciato → mantieni la coordinata esatta (anche frazionaria);
+      // asse libero → arrotonda a intero, così un trascinamento a mano non
+      // finisce a 43,7 (aggancio a 1 unità di sempre).
+      tr.t.x = tr.aggX ? r2(tr.t.x) : Math.round(tr.t.x);
+      tr.t.y = tr.aggY ? r2(tr.t.y) : Math.round(tr.t.y);
+      posizionaPunto(tr.el, tr.t);
       segnaSporco();
     }
-    vista.seleziona(t.id, { scheda: false });
-    mostraForm(t.id);
+    vista.seleziona(tr.t.id, { scheda: false });
+    mostraForm(tr.t.id);
   };
   mapEl.addEventListener("pointerup", fineTrascinamento);
   mapEl.addEventListener("pointercancel", fineTrascinamento);
@@ -717,15 +1038,40 @@ export async function initTavoliEditor({ vista, mapEl, elencoEl, schedaEl, conte
     el.style.top = `${((p.y / map.sala.h) * 100).toFixed(2)}%`;
   }
 
-  /* --- frecce: rifinitura di 1 unità --- */
+  /* --- frecce: rifinitura di 1 unità (tavolo singolo o gruppo selezionato) --- */
   document.addEventListener("keydown", (e) => {
-    const id = vista.selezionato();
-    if (!id || !e.key.startsWith("Arrow")) return;
+    if (e.key === "Escape" && selezione.size) {
+      svuotaSelezione();
+      return;
+    }
+    if (!e.key.startsWith("Arrow")) return;
     if (e.target.matches("input, select, textarea")) return;
-    const t = map.tavoli.find((x) => x.id === id);
-    if (!t) return;
     const passo = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
     if (!passo) return;
+
+    // Gruppo: muove tutti i selezionati, limitando perché nessuno esca.
+    if (selezione.size >= 2) {
+      const sel = elementiSelezione();
+      e.preventDefault();
+      const minX = Math.min(...sel.map((t) => t.x));
+      const minY = Math.min(...sel.map((t) => t.y));
+      const maxX = Math.max(...sel.map((t) => t.x));
+      const maxY = Math.max(...sel.map((t) => t.y));
+      const dx = Math.max(-minX, Math.min(map.sala.w - maxX, passo[0]));
+      const dy = Math.max(-minY, Math.min(map.sala.h - maxY, passo[1]));
+      sel.forEach((t) => {
+        t.x += dx;
+        t.y += dy;
+      });
+      segnaSporco();
+      ridisegna();
+      return;
+    }
+
+    const id = vista.selezionato();
+    if (!id) return;
+    const t = map.tavoli.find((x) => x.id === id);
+    if (!t) return;
     e.preventDefault();
     t.x = Math.min(map.sala.w, Math.max(0, t.x + passo[0]));
     t.y = Math.min(map.sala.h, Math.max(0, t.y + passo[1]));

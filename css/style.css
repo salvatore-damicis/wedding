@@ -301,6 +301,10 @@ img { max-width: 100%; display: block; }
   max-width: calc(58svh * var(--sala-ar, 1.14));
   margin-inline: auto;
   container-type: inline-size;
+  /* Diametro dei cerchi: lo usano sia i tavoli sia l'etichetta "Sposi" (per
+     restare a filo del cerchio a ogni scala). `--tavolo-scala` lo scrive
+     view.js da sala.tavoloScala. */
+  --tavolo-size: calc(clamp(38px, 12cqw, 66px) * var(--tavolo-scala, 1));
 }
 .mappa__sala { position: absolute; inset: 0; width: 100%; height: 100%; }
 .mappa__muri { fill: var(--paper); stroke: var(--rose-soft); stroke-width: 0.7; }
@@ -318,10 +322,8 @@ img { max-width: 100%; display: block; }
 
 /* ---- Un tavolo ---- */
 .tavolo {
-  /* `--tavolo-scala` (default 1) lo scrive view.js da sala.tavoloScala: gli Sposi
-     regolano la grandezza di TUTTI i cerchi insieme dall'editor. Il clamp tiene
-     comunque la responsività; la scala moltiplica in modo uniforme. */
-  --tavolo-size: calc(clamp(38px, 12cqw, 66px) * var(--tavolo-scala, 1));
+  /* `--tavolo-size` è definito su .mappa (dipende da --tavolo-scala): gli Sposi
+     regolano la grandezza di TUTTI i cerchi insieme dall'editor. */
   position: absolute; transform: translate(-50%, -50%);
   display: grid; justify-items: center;
   background: none; border: none; padding: 0; cursor: pointer;
@@ -341,9 +343,24 @@ img { max-width: 100%; display: block; }
   font-family: var(--font-serif); font-weight: 700; color: var(--wine-deep);
   font-size: calc(var(--tavolo-size) * 0.34); line-height: 1;
 }
-.tavolo__ruolo {
-  position: absolute; bottom: calc(100% + 1px); left: 50%; transform: translateX(-50%);
-  font-family: var(--font-script); font-size: 1.15rem; color: var(--rose); line-height: 1;
+/* ---- Etichette spostabili ("INGRESSO" e "Sposi") ----
+   Layer HTML posizionato in % sopra la mappa. In sola lettura non intercetta i
+   clic (i tavoli restano cliccabili sotto); in modifica diventano afferrabili. */
+.mappa__etichetta {
+  position: absolute; transform: translate(-50%, -50%);
+  pointer-events: none; user-select: none; white-space: nowrap; z-index: 3;
+  line-height: 1;
+}
+.mappa__etichetta--ingresso {
+  font-family: var(--font-sans); font-size: 0.62rem; letter-spacing: 0.12em;
+  color: var(--ink-soft); text-transform: uppercase;
+}
+.mappa__etichetta--ruolo {
+  font-family: var(--font-script); font-size: 1.15rem; color: var(--rose);
+}
+/* Default (nessun override): a filo sopra al cerchio del tavolo sposi. */
+.mappa__etichetta--sopra {
+  transform: translate(-50%, calc(-50% - var(--tavolo-size) / 2 - 0.15rem));
 }
 .tavolo:hover .tavolo__cerchio { transform: scale(1.06); border-color: var(--rose); }
 .tavolo:focus-visible { outline: none; }
@@ -471,6 +488,36 @@ img { max-width: 100%; display: block; }
   background: var(--wine); color: var(--paper); border-color: var(--wine);
 }
 .editor-form__check { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+
+/* In modifica il gesto sulla mappa appartiene all'editor (marquee, drag), non
+   allo scroll della pagina: come per i tavoli, niente touch-action sul dito. */
+.is-editing .mappa { touch-action: none; }
+
+/* In modifica le etichette diventano afferrabili; durante il trascinamento il
+   transform torna centrato (annulla l'offset --sopra) così non "saltano". */
+.is-editing .mappa__etichetta { pointer-events: auto; cursor: grab; touch-action: none; }
+.is-editing .mappa__etichetta.is-dragging {
+  transform: translate(-50%, -50%); cursor: grabbing; z-index: 7;
+}
+
+/* Tavolo dentro la selezione multipla. */
+.is-editing .tavolo.is-selezionato .tavolo__cerchio {
+  border-color: var(--wine);
+  box-shadow: 0 0 0 3px rgba(123, 45, 59, 0.28), var(--shadow);
+}
+
+/* Rettangolo di selezione (marquee) tracciato sul pavimento vuoto. */
+.marquee {
+  position: absolute; z-index: 6; pointer-events: none;
+  border: 1.5px dashed var(--wine);
+  background: rgba(123, 45, 59, 0.08);
+}
+
+/* Pannello Allinea / Distribuisci della selezione multipla. */
+.editor-sel__gruppo { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-bottom: 0.6rem; }
+.editor-sel__lab { flex: 1 0 100%; font-size: 0.8rem; font-weight: 600; color: var(--ink-soft); }
+.editor-sel .btn { padding: 0.45rem 0.7rem; font-size: 1rem; line-height: 1; min-width: 2.4rem; }
+.editor-sel .btn[disabled] { opacity: 0.4; cursor: not-allowed; }
 
 .editor-form { text-align: left; }
 .editor-form__titolo {

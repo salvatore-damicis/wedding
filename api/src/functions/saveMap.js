@@ -36,16 +36,29 @@ function sanitizeMap(input) {
     const n = Math.round(Number(v));
     return Number.isFinite(n) && n > 0 ? Math.min(50, n) : 0; // 0 = non indicato
   };
+  // Posizione opzionale di un'etichetta (unità di sala), riportata dentro la
+  // sala. Ritorna undefined se assente/non valida, così il campo non compare.
+  const punto = (p) =>
+    p && Number.isFinite(Number(p.x)) && Number.isFinite(Number(p.y))
+      ? { x: round(clamp(p.x, w)), y: round(clamp(p.y, h)) }
+      : undefined;
+
   const noti = new Set(cantine.map((c) => c.id));
   const tavoli = (Array.isArray(input.tavoli) ? input.tavoli : [])
-    .map((t) => ({
-      id: str(t.id, 40),
-      tipo: TIPI.includes(t.tipo) ? t.tipo : "cantina",
-      x: round(clamp(t.x, w)),
-      y: round(clamp(t.y, h)),
-      posti: posti(t.posti),
-      cantinaId: noti.has(t.cantinaId) ? t.cantinaId : null,
-    }))
+    .map((t) => {
+      const out = {
+        id: str(t.id, 40),
+        tipo: TIPI.includes(t.tipo) ? t.tipo : "cantina",
+        x: round(clamp(t.x, w)),
+        y: round(clamp(t.y, h)),
+        posti: posti(t.posti),
+        cantinaId: noti.has(t.cantinaId) ? t.cantinaId : null,
+      };
+      // Posizione scelta per la scritta "Sposi" (solo se spostata dagli Sposi).
+      const rp = punto(t.ruoloPos);
+      if (rp) out.ruoloPos = rp;
+      return out;
+    })
     .filter((t) => t.id);
 
   if (!tavoli.length) return null;
@@ -55,11 +68,17 @@ function sanitizeMap(input) {
   const tavoloScala = Number.isFinite(scalaRaw) && scalaRaw > 0
     ? Math.min(1.8, Math.max(0.6, Math.round(scalaRaw * 100) / 100))
     : 1;
-  return {
-    sala: { w, h, ingresso: { x: round(clamp(ing.x, w)), y: round(clamp(ing.y, h)) }, tavoloScala },
-    tavoli,
-    cantine,
+  const sala = {
+    w,
+    h,
+    ingresso: { x: round(clamp(ing.x, w)), y: round(clamp(ing.y, h)) },
+    tavoloScala,
   };
+  // Posizione scelta per la scritta "INGRESSO" (solo se spostata dagli Sposi).
+  const il = punto(input.sala?.ingressoLabel);
+  if (il) sala.ingressoLabel = il;
+
+  return { sala, tavoli, cantine };
 }
 
 /* POST /api/saveMap { adminPin, map } -> 204
