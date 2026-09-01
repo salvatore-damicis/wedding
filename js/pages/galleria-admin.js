@@ -2,11 +2,15 @@
  * Moderazione galleria — solo Sposi, si attiva con galleria.html?admin.
  * Import dinamico da galleria.js: un invitato non scarica questo modulo.
  *
- * Fa una cosa sola: eliminare un INTERO spazio (foto e video compresi) con il
- * PIN admin. La cancellazione delle singole foto sta dentro lo spazio
- * (spazio.html?admin). Il backend autorizza deleteSpace solo col PIN admin e la
- * rende definitiva (ADR-0002/0003): è l'unica via di recupero di un PIN perso —
- * gli sposi azzerano, l'invitato ricrea.
+ * Fa due cose:
+ *  - Interruttore "Galleria aperta agli invitati" (settings.galleriaAttiva):
+ *    finché è spento, gli invitati vedono la sezione predisposta ma non possono
+ *    creare spazi né caricare foto. Gli Sposi qui la vedono sempre per intero.
+ *  - Eliminare un INTERO spazio (foto e video compresi) con il PIN admin. La
+ *    cancellazione delle singole foto sta dentro lo spazio (spazio.html?admin).
+ * Il backend autorizza deleteSpace/saveSettings solo col PIN admin e la
+ * cancellazione è definitiva (ADR-0002/0003): è l'unica via di recupero di un
+ * PIN perso — gli sposi azzerano, l'invitato ricrea.
  *
  * Il PIN è uno solo (ADMIN_PIN, server-side): per la verifica riuso
  * tavoli.verifyAdmin, che parla con lo stesso backend.
@@ -66,8 +70,36 @@ export async function initGalleriaAdmin({ grid, refresh }) {
   const banner = document.createElement("div");
   banner.className = "modera-bar";
   banner.innerHTML = `<span class="modera-bar__tag">Moderazione sposi</span>
+    <label class="ga-switch modera-bar__switch"><input type="checkbox" id="gm-attiva"> <span>Galleria aperta agli invitati</span></label>
     <span class="modera-bar__hint">Tocca ✕ su uno spazio per eliminarlo (definitivo).</span>`;
   grid.before(banner);
+
+  /* Interruttore apertura galleria (settings.galleriaAttiva). Finché è spenta,
+     gli invitati vedono la sezione predisposta ma non possono creare spazi né
+     caricare foto; gli Sposi qui la vedono comunque per intero. */
+  const attiva = banner.querySelector("#gm-attiva");
+  tavoli
+    .getSettings()
+    .then((s) => (attiva.checked = !!s.galleriaAttiva))
+    .catch(() => {});
+  attiva.addEventListener("change", async () => {
+    try {
+      await tavoli.saveSettings(pin, { galleriaAttiva: attiva.checked });
+      toast(
+        attiva.checked
+          ? "Galleria aperta agli invitati 🍷"
+          : "Galleria chiusa: creazione spazi e upload sospesi"
+      );
+    } catch (err) {
+      if (/autorizz/i.test(err.message)) {
+        adminSession.forget();
+        toast("PIN non più valido: ricarica per rientrare");
+      } else {
+        toast(err.message || "Impossibile salvare");
+      }
+      attiva.checked = !attiva.checked; // rollback visivo
+    }
+  });
 
   // Delega: il ✕ vive dentro l'&lt;a&gt; della card, quindi fermiamo la navigazione.
   grid.addEventListener("click", async (e) => {

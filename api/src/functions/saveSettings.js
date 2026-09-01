@@ -1,12 +1,13 @@
 const { app } = require("@azure/functions");
 const S = require("../shared/storage");
 
-/* POST /api/saveSettings { adminPin, settings: { giochiAttivi?, weddingDate? } } -> 204
+/* POST /api/saveSettings { adminPin, settings: { giochiAttivi?, weddingDate?, galleriaAttiva? } } -> 204
  * Solo Sposi. Ogni campo è ricostruito qui: il browser non decide la forma.
  *
  * Aggiornamento PARZIALE per campo presente: la regia del gioco salva solo
- * `giochiAttivi`, la home admin solo `weddingDate`. Si fa merge col documento
- * esistente così un pannello non azzera il campo gestito dall'altro.
+ * `giochiAttivi`, la home admin solo `weddingDate`, la moderazione galleria solo
+ * `galleriaAttiva`. Si fa merge col documento esistente così un pannello non
+ * azzera il campo gestito dagli altri.
  *
  * `weddingDate`: se la chiave è presente e vuota/null → si cancella (torna al
  * seme); se è una data valida → si normalizza in ISO; se è spazzatura → si
@@ -25,6 +26,7 @@ app.http("saveSettings", {
     const next = {
       giochiAttivi: "giochiAttivi" in s ? !!s.giochiAttivi : !!prev.giochiAttivi,
       weddingDate: prev.weddingDate || null,
+      galleriaAttiva: "galleriaAttiva" in s ? !!s.galleriaAttiva : !!prev.galleriaAttiva,
     };
 
     if ("weddingDate" in s) {

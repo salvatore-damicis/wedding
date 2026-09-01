@@ -1,12 +1,20 @@
 /* Galleria: elenco degli spazi (con anteprime) + creazione/accesso al proprio. */
 import { mountChrome } from "../partials.js";
 import { storage } from "../storage/adapter.js";
+import { tavoli } from "../tavoli/adapter.js";
 import { session } from "../session.js";
 import { toast } from "../ui.js";
 
 mountChrome();
 
 const grid = document.getElementById("spaces");
+
+/* La galleria è aperta agli invitati solo quando gli Sposi la attivano
+   (settings.galleriaAttiva, default false — vedi galleria-admin.js). Finché è
+   chiusa gli invitati vedono la sezione predisposta ma non possono creare spazi
+   né caricare foto; gli Sposi autenticati (adminOk) la vedono sempre per intero. */
+let galleriaAttiva = true; // ottimista finché non ho letto le settings
+let adminOk = false;
 
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
@@ -60,7 +68,21 @@ function createTileHtml() {
   </button>`;
 }
 
+/* Vista "galleria non ancora aperta": sezione predisposta, ma niente griglia né
+   creazione. Riusa lo stile della card del gioco inattivo per coerenza. */
+function lockedHtml() {
+  return `<div class="gq-card gq-center spaces__locked">
+    <p class="gq-big">La galleria aprirà a breve 🍷</p>
+    <p class="gq-sub">Qui ogni invitato avrà il suo spazio per caricare foto e video della festa. Gli sposi la apriranno al momento giusto: torna tra poco!</p>
+  </div>`;
+}
+
 async function render() {
+  // Galleria ancora chiusa dagli Sposi: placeholder, salvo gli Sposi autenticati.
+  if (!galleriaAttiva && !adminOk) {
+    grid.innerHTML = lockedHtml();
+    return;
+  }
   try {
     const spaces = await storage.listSpaces();
     spaces.sort((a, b) => b.photoCount - a.photoCount);
@@ -121,11 +143,22 @@ pinInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") submit();
 });
 
-await render();
+// Stato apertura galleria: letto prima del primo render così gli invitati non
+// vedono un lampo della griglia prima del placeholder.
+try {
+  galleriaAttiva = (await tavoli.getSettings()).galleriaAttiva;
+} catch {
+  galleriaAttiva = true; // in caso di errore rete non blocco la galleria
+}
 
-/* Regia solo con ?admin: PIN sposi, poi eliminazione di interi spazi. */
+/* Regia solo con ?admin: PIN sposi, poi interruttore apertura + eliminazione di
+   interi spazi. Prima del render, così gli Sposi autenticati vedono sempre la
+   griglia completa anche a galleria chiusa. */
 if (new URLSearchParams(location.search).has("admin")) {
   const { initGalleriaAdmin } = await import("./galleria-admin.js");
   decoraAdmin = await initGalleriaAdmin({ grid, refresh: render });
-  if (decoraAdmin) decoraAdmin();
+  if (decoraAdmin) adminOk = true;
 }
+
+await render();
+if (decoraAdmin) decoraAdmin();

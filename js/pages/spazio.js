@@ -3,6 +3,7 @@
  * I file salgono ORIGINALI, nessuna compressione (scelta esplicita). */
 import { mountChrome } from "../partials.js";
 import { storage } from "../storage/adapter.js";
+import { tavoli } from "../tavoli/adapter.js";
 import { session } from "../session.js";
 import { toast } from "../ui.js";
 
@@ -39,6 +40,17 @@ let coverId = null;
 /* PIN sposi, valorizzato solo in moderazione (spazio.html?admin): abilita la
    cancellazione di qualsiasi foto anche non essendo il proprietario. */
 let adminPin = null;
+/* Galleria aperta dagli Sposi (settings.galleriaAttiva). Finché è chiusa non si
+   può caricare né rientrare in uno spazio; gli Sposi in moderazione la scavalcano.
+   Ottimista finché non ho letto le settings, così non lampeggia il blocco. */
+let galleriaAttiva = true;
+
+/* Avviso mostrato quando la galleria è chiusa (inserito una volta, sopra la
+   griglia; nascosto quando è aperta o in moderazione sposi). */
+const lockNote = document.createElement("p");
+lockNote.className = "gallery__locked-note";
+lockNote.hidden = true;
+gallery.before(lockNote);
 
 /* ---- Render griglia ---- */
 function mediaThumb(p) {
@@ -62,12 +74,23 @@ function itemHtml(p, i) {
 }
 
 async function render() {
+  // Galleria chiusa dagli Sposi: niente upload né accesso, salvo moderazione sposi.
+  const bloccata = !galleriaAttiva && !adminPin;
   ownerBadge.hidden = !isOwner();
-  uploadEl.hidden = !isOwner();
-  // L'invito a sbloccare vale per chi non è proprietario (e non è in moderazione).
-  unlockBox.hidden = isOwner() || !!adminPin;
+  // Upload solo al proprietario e solo a galleria aperta.
+  uploadEl.hidden = !isOwner() || bloccata;
+  // L'invito a sbloccare vale per chi non è proprietario (e non è in moderazione),
+  // ma a galleria chiusa non si entra in nessuno spazio.
+  unlockBox.hidden = isOwner() || !!adminPin || bloccata;
   // "Esci" solo al proprietario, e discreto: niente più badge sempre in vista.
   lockBtn.hidden = !isOwner();
+
+  lockNote.hidden = !bloccata;
+  if (bloccata) {
+    lockNote.textContent = isOwner()
+      ? "Galleria momentaneamente chiusa: potrai caricare di nuovo quando gli sposi la riapriranno."
+      : "La galleria aprirà a breve 🍷 Gli sposi la stanno preparando.";
+  }
 
   try {
     const data = await storage.getSpace(nick);
@@ -344,6 +367,13 @@ document.getElementById("modal-go").addEventListener("click", unlock);
 pinInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") unlock();
 });
+
+// Stato apertura galleria, letto prima del primo render (in errore rete non blocco).
+try {
+  galleriaAttiva = (await tavoli.getSettings()).galleriaAttiva;
+} catch {
+  galleriaAttiva = true;
+}
 
 render();
 

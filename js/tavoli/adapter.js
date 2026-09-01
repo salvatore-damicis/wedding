@@ -8,12 +8,15 @@
  *   getMap()                      -> { sala, tavoli: Tavolo[], cantine: Cantina[] }
  *   saveMap(adminPin, map)        -> void                      (solo Sposi)
  *   verifyAdmin(adminPin)         -> boolean
- *   getSettings()                 -> { giochiAttivi: boolean, weddingDate: string|null }
+ *   getSettings()                 -> { giochiAttivi: boolean, weddingDate: string|null, galleriaAttiva: boolean }
  *   saveSettings(adminPin, s)     -> void                      (solo Sposi)
  *
  * saveSettings fa merge per campo presente: la regia del gioco salva solo
- * giochiAttivi, la home admin (index.html?admin) solo weddingDate. weddingDate
- * (ISO) pilota il countdown della home; null = vale il seme WEDDING.date.
+ * giochiAttivi, la home admin (index.html?admin) solo weddingDate, la moderazione
+ * galleria (galleria.html?admin) solo galleriaAttiva. weddingDate (ISO) pilota il
+ * countdown della home; null = vale il seme WEDDING.date. galleriaAttiva (default
+ * false) apre la galleria condivisa: finché è false gli invitati vedono la sezione
+ * predisposta ma non possono creare spazi né caricare foto.
  *
  * Perché un seam separato e non `storage`: le foto le scrivono gli Invitati con
  * il proprio PIN, la mappa la scrivono SOLO gli Sposi col PIN admin. Regole di

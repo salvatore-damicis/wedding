@@ -61,7 +61,11 @@ export class LocalTavoliAdapter {
 
   async getSettings() {
     const s = leggi(KEY_SETTINGS) || {};
-    return { giochiAttivi: !!s.giochiAttivi, weddingDate: s.weddingDate || null };
+    return {
+      giochiAttivi: !!s.giochiAttivi,
+      weddingDate: s.weddingDate || null,
+      galleriaAttiva: !!s.galleriaAttiva,
+    };
   }
 
   /* Merge per campo presente, come il backend (saveSettings.js): la regia del
@@ -74,6 +78,7 @@ export class LocalTavoliAdapter {
     const next = {
       giochiAttivi: "giochiAttivi" in s ? !!s.giochiAttivi : !!prev.giochiAttivi,
       weddingDate: prev.weddingDate || null,
+      galleriaAttiva: "galleriaAttiva" in s ? !!s.galleriaAttiva : !!prev.galleriaAttiva,
     };
     if ("weddingDate" in s) {
       const raw = s.weddingDate;

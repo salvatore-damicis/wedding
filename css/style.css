@@ -602,6 +602,17 @@ img { max-width: 100%; display: block; }
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 .space-admin-del:hover { background: var(--wine-deep); }
+/* Interruttore "galleria aperta" dentro la barra di moderazione: annulla il
+   margine che .ga-switch usa nel pannello del gioco. */
+.modera-bar__switch { margin-bottom: 0; }
+
+/* Galleria chiusa dagli Sposi: card placeholder (galleria) e avviso (spazio). */
+.spaces__locked { margin-top: 0.5rem; }
+.gallery__locked-note {
+  margin: 0 0 1.1rem; padding: 0.7rem 0.9rem; text-align: center;
+  color: var(--ink-soft); font-size: 0.9rem;
+  background: #fdf3f5; border: 1px solid var(--rose); border-radius: var(--radius);
+}
 .space-admin-del:disabled { opacity: 0.6; cursor: default; }
 
 .galleria__actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.9rem; margin-bottom: 2rem; }

@@ -11,7 +11,7 @@ The design decisions and their rationale are recorded in `docs/adr/` and the dom
 ## Architecture — the parts that span files
 
 ### Frontend (static, multi-page — ADR-0001)
-Each user-facing page is its own HTML file: `index.html` (hero + countdown + claim + hub cards; `?admin` = Sposi set the wedding date that drives the countdown, with an expiry preview — persisted in `settings.weddingDate`), `luoghi.html` (venues + maps + transfer connector), `tavoli.html` (the seating-plan page: SVG sala + tavoli, alphabetical cantina list, detail card, and a full `?admin` editor; see `CONTEXT.md` for *Tavolo* / *Cantina*), `galleria.html` (list of guest spaces; `?admin` = Sposi moderation: delete whole spaces), `spazio.html?nick=X` (one guest's space + upload/lightbox; `?admin` = Sposi moderation: delete any photo + delete the whole space), `giochi.html` (the **live host-paced quiz**; `?admin` = Sposi authoring + conducting — ADR-0005). Every page:
+Each user-facing page is its own HTML file: `index.html` (hero + countdown + claim + hub cards; `?admin` = Sposi set the wedding date that drives the countdown, with an expiry preview — persisted in `settings.weddingDate`), `luoghi.html` (venues + maps + transfer connector), `tavoli.html` (the seating-plan page: SVG sala + tavoli, alphabetical cantina list, detail card, and a full `?admin` editor; see `CONTEXT.md` for *Tavolo* / *Cantina*), `galleria.html` (list of guest spaces; gated by `settings.galleriaAttiva` — while off, guests see the section but cannot create spaces or upload, and the couple open it from here; `?admin` = Sposi moderation: activation toggle + delete whole spaces), `spazio.html?nick=X` (one guest's space + upload/lightbox, also gated by `settings.galleriaAttiva`; `?admin` = Sposi moderation: delete any photo + delete the whole space), `giochi.html` (the **live host-paced quiz**; `?admin` = Sposi authoring + conducting — ADR-0005). Every page:
 - carries `<meta name="robots" content="noindex">` (guest photos must not be indexed),
 - has `<div id="site-nav"></div>` / `<div id="site-footer"></div>` placeholders filled by `js/partials.js` (nav/footer live in ONE place, not duplicated across 5 files),
 - loads exactly one entry module from `js/pages/<page>.js`, which imports shared modules.
@@ -43,7 +43,7 @@ The seating plan has its **own** seam, `js/tavoli/adapter.js`, deliberately NOT 
 getMap()                   -> { sala, tavoli: Tavolo[], cantine: Cantina[] }
 saveMap(adminPin, map)     -> void        (couple only)
 verifyAdmin(adminPin)      -> boolean     (validate BEFORE entering edit mode)
-getSettings()              -> { giochiAttivi: boolean, weddingDate: string|null }
+getSettings()              -> { giochiAttivi: boolean, weddingDate: string|null, galleriaAttiva: boolean }
 saveSettings(adminPin, s)  -> void        (couple only; merges per present field)
 ```
 `WEDDING.tavoliSeed` in `data/config.js` is a **seed**, not a second source of truth: it applies only while the backend has no saved map (`getMap` → `map: null`). Logos resolve in this order (`logoSrc` in `js/tavoli/view.js`): an uploaded `cantina.logoUrl` (Blob in `api` mode, data-URL in `local` mode, set via the editor's logo upload) → the static convention file `assets/img/cantine/<slug(nome)>.png` → initials. So the convention file is now a *fallback*, not the only source (see ADR-0004's superseding note). Coordinates are abstract, isotropic room units (`sala.w` × `sala.h`); the sala is an SVG, each tavolo an HTML `<button>` positioned in %.
