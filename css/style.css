@@ -606,8 +606,10 @@ img { max-width: 100%; display: block; }
    margine che .ga-switch usa nel pannello del gioco. */
 .modera-bar__switch { margin-bottom: 0; }
 
-/* Galleria chiusa dagli Sposi: card placeholder (galleria) e avviso (spazio). */
-.spaces__locked { margin-top: 0.5rem; }
+/* Galleria chiusa dagli Sposi: card placeholder (galleria) e avviso (spazio).
+   La card sta dentro la griglia .spaces: la faccio occupare tutte le colonne
+   così .gq-card (max-width + margin auto) la centra come la card del gioco. */
+.spaces__locked { grid-column: 1 / -1; margin-top: 0.5rem; }
 .gallery__locked-note {
   margin: 0 0 1.1rem; padding: 0.7rem 0.9rem; text-align: center;
   color: var(--ink-soft); font-size: 0.9rem;
