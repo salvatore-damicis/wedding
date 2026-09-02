@@ -11,7 +11,7 @@ The design decisions and their rationale are recorded in `docs/adr/` and the dom
 ## Architecture — the parts that span files
 
 ### Frontend (static, multi-page — ADR-0001)
-Each user-facing page is its own HTML file: `index.html` (hero + countdown + claim + hub cards; `?admin` = Sposi set the wedding date that drives the countdown, with an expiry preview — persisted in `settings.weddingDate`), `luoghi.html` (venues + maps + transfer connector), `tavoli.html` (the seating-plan page: SVG sala + tavoli, alphabetical cantina list, detail card, and a full `?admin` editor; see `CONTEXT.md` for *Tavolo* / *Cantina*), `galleria.html` (list of guest spaces; gated by `settings.galleriaAttiva` — while off, guests see the section but cannot create spaces or upload, and the couple open it from here; `?admin` = Sposi moderation: activation toggle + delete whole spaces), `spazio.html?nick=X` (one guest's space + upload/lightbox, also gated by `settings.galleriaAttiva`; `?admin` = Sposi moderation: delete any photo + delete the whole space), `giochi.html` (the **live host-paced quiz**; `?admin` = Sposi authoring + conducting — ADR-0005). Every page:
+Each user-facing page is its own HTML file: `index.html` (hero + countdown + claim + hub cards; `?admin` = Sposi set the wedding date that drives the countdown, with an expiry preview — persisted in `settings.weddingDate`), `luoghi.html` (venues + maps + transfer connector), `tavoli.html` (the seating-plan page: SVG sala + tavoli, alphabetical cantina list, detail card, and a full `?admin` editor; see `CONTEXT.md` for *Tavolo* / *Cantina*), `galleria.html` (list of guest spaces; gated by `settings.galleriaAttiva` — while off, guests see the section but cannot create spaces or upload, and the couple open it from here — and by `settings.galleriaBloccata`, an independent read-only "freeze" that keeps every space/photo visible but suspends new spaces and uploads; `?admin` = Sposi moderation: activation toggle + read-only toggle + delete whole spaces), `spazio.html?nick=X` (one guest's space + upload/lightbox, also gated by `settings.galleriaAttiva`/`galleriaBloccata`; `?admin` = Sposi moderation: delete any photo + reset the space PIN (forgotten-PIN recovery, photos kept) + delete the whole space), `giochi.html` (the **live host-paced quiz**; `?admin` = Sposi authoring + conducting — ADR-0005). Every page:
 - carries `<meta name="robots" content="noindex">` (guest photos must not be indexed),
 - has `<div id="site-nav"></div>` / `<div id="site-footer"></div>` placeholders filled by `js/partials.js` (nav/footer live in ONE place, not duplicated across 5 files),
 - loads exactly one entry module from `js/pages/<page>.js`, which imports shared modules.
@@ -27,6 +27,7 @@ createOrEnter(nickname, pin)     -> { ok, isNew, reason? }
 uploadPhoto(nickname, pin, file) -> Photo    { id, url, name, uploadedAt }
 deletePhoto(nickname, pin, id)   -> void
 deleteSpace(adminPin, nickname)  -> void
+resetPin(adminPin, nickname, newPin) -> void   // Sposi: reimposta il PIN di uno spazio (foto intatte)
 ```
 `adapter.js` picks the implementation from `STORAGE.backend` in `data/config.js`:
 - **`local`** → `js/storage/local-adapter.js`: photos as data-URLs in `localStorage`, single browser, no backend. For fast UI/style work. ⚠️ Cross-guest sharing does NOT work here — it's one browser.
@@ -35,7 +36,7 @@ deleteSpace(adminPin, nickname)  -> void
 **When wiring/testing the real backend, flip `STORAGE.backend` to `"api"`.** Nothing else in the UI changes.
 
 ### Domain model — spaces, not albums (ADR-0002)
-The gallery is **per-guest spaces**, not thematic albums. A guest creates a **Space** by choosing a **nickname** (public) + **PIN** (secret). Rules: write only your own space (PIN-gated), read all spaces. Same nickname + correct PIN = re-enter; wrong PIN = denied; new nickname = create — `createOrEnter` unifies "login" and "create". The **couple** hold an admin PIN that can delete any photo/space (moderation + the only PIN recovery: admin wipes, guest recreates). The unlocked-PIN "session" is remembered per device in `localStorage` via `js/session.js` (a convenience, not security — the backend re-checks the PIN on every write). "Esci dal mio spazio" clears it. Use the glossary terms in `CONTEXT.md` (Spazio, Nickname, PIN, Invitato, Sposi) — avoid "album"/"account"/"login".
+The gallery is **per-guest spaces**, not thematic albums. A guest creates a **Space** by choosing a **nickname** (public) + **PIN** (secret). Rules: write only your own space (PIN-gated), read all spaces. Same nickname + correct PIN = re-enter; wrong PIN = denied; new nickname = create — `createOrEnter` unifies "login" and "create". The **couple** hold an admin PIN that can delete any photo/space and reset a space's PIN (moderation + PIN recovery: the soft path is `resetPin`, which sets a new PIN and keeps the photos; the hard path is `deleteSpace` — admin wipes, guest recreates). The unlocked-PIN "session" is remembered per device in `localStorage` via `js/session.js` (a convenience, not security — the backend re-checks the PIN on every write). "Esci dal mio spazio" clears it. Use the glossary terms in `CONTEXT.md` (Spazio, Nickname, PIN, Invitato, Sposi) — avoid "album"/"account"/"login".
 
 ### Table map — the second seam (ADR-0004)
 The seating plan has its **own** seam, `js/tavoli/adapter.js`, deliberately NOT part of `storage`: photos are written by *guests* with their own PIN, the map only by the *couple* with the admin PIN. Same shape, same `STORAGE.backend` switch:
@@ -43,7 +44,7 @@ The seating plan has its **own** seam, `js/tavoli/adapter.js`, deliberately NOT 
 getMap()                   -> { sala, tavoli: Tavolo[], cantine: Cantina[] }
 saveMap(adminPin, map)     -> void        (couple only)
 verifyAdmin(adminPin)      -> boolean     (validate BEFORE entering edit mode)
-getSettings()              -> { giochiAttivi: boolean, weddingDate: string|null, galleriaAttiva: boolean }
+getSettings()              -> { giochiAttivi: boolean, weddingDate: string|null, galleriaAttiva: boolean, galleriaBloccata: boolean }
 saveSettings(adminPin, s)  -> void        (couple only; merges per present field)
 ```
 `WEDDING.tavoliSeed` in `data/config.js` is a **seed**, not a second source of truth: it applies only while the backend has no saved map (`getMap` → `map: null`). Logos resolve in this order (`logoSrc` in `js/tavoli/view.js`): an uploaded `cantina.logoUrl` (Blob in `api` mode, data-URL in `local` mode, set via the editor's logo upload) → the static convention file `assets/img/cantine/<slug(nome)>.png` → initials. So the convention file is now a *fallback*, not the only source (see ADR-0004's superseding note). Coordinates are abstract, isotropic room units (`sala.w` × `sala.h`); the sala is an SVG, each tavolo an HTML `<button>` positioned in %.

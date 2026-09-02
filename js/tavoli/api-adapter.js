@@ -75,7 +75,7 @@ export class ApiTavoliAdapter {
 
   async getSettings() {
     const { settings } = await this._json("/getSettings");
-    return settings || { giochiAttivi: false, weddingDate: null, galleriaAttiva: false };
+    return settings || { giochiAttivi: false, weddingDate: null, galleriaAttiva: false, galleriaBloccata: false };
   }
 
   async saveSettings(adminPin, settings) {

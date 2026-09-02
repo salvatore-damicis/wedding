@@ -14,6 +14,13 @@ app.http("createOrEnter", {
 
     const existing = await S.getSpaceEntity(nick);
     if (!existing) {
+      // Galleria in sola lettura (settings.galleriaBloccata): si può rientrare in
+      // uno spazio esistente, ma non crearne di nuovi. Fail-open se le settings
+      // non sono leggibili, come la UI ottimista.
+      const settings = await S.getSiteDoc("settings").catch(() => null);
+      if (settings?.galleriaBloccata) {
+        return S.json(200, { ok: false, reason: "La creazione di nuovi spazi è sospesa dagli sposi" });
+      }
       const { salt, hash } = S.hashPin(code);
       await S.tableClient("spaces").createEntity({
         partitionKey: "space",

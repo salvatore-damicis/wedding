@@ -14,7 +14,19 @@ const grid = document.getElementById("spaces");
    chiusa gli invitati vedono la sezione predisposta ma non possono creare spazi
    né caricare foto; gli Sposi autenticati (adminOk) la vedono sempre per intero. */
 let galleriaAttiva = true; // ottimista finché non ho letto le settings
+/* Sola lettura (settings.galleriaBloccata): la galleria è aperta e tutto resta
+   visibile, ma nessuno può creare spazi né caricare. Indipendente da galleriaAttiva. */
+let galleriaBloccata = false;
 let adminOk = false;
+
+/* Avviso "galleria in sola lettura", inserito una volta sopra la griglia e
+   mostrato solo quando è bloccata (con la griglia visibile). */
+const bloccataNote = document.createElement("p");
+bloccataNote.className = "gallery__locked-note";
+bloccataNote.hidden = true;
+bloccataNote.textContent =
+  "Galleria in sola lettura: sfoglia pure gli spazi e i ricordi già caricati, ma per ora non si possono creare nuovi spazi né caricare foto.";
+grid.before(bloccataNote);
 
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
@@ -80,16 +92,20 @@ function lockedHtml() {
 async function render() {
   // Galleria ancora chiusa dagli Sposi: placeholder, salvo gli Sposi autenticati.
   if (!galleriaAttiva && !adminOk) {
+    bloccataNote.hidden = true;
     grid.innerHTML = lockedHtml();
     return;
   }
+  // Sola lettura: griglia visibile, ma niente tile "+" (nessuno crea spazi).
+  bloccataNote.hidden = !galleriaBloccata;
+  const createTile = galleriaBloccata ? "" : createTileHtml();
   try {
     const spaces = await storage.listSpaces();
     spaces.sort((a, b) => b.photoCount - a.photoCount);
-    grid.innerHTML = createTileHtml() + spaces.map(cardHtml).join("");
+    grid.innerHTML = createTile + spaces.map(cardHtml).join("");
   } catch (err) {
     grid.innerHTML =
-      createTileHtml() +
+      createTile +
       `<p class="spaces__empty">Impossibile caricare gli spazi. Riprova più tardi.</p>`;
     console.error(err);
   }
@@ -146,9 +162,12 @@ pinInput.addEventListener("keydown", (e) => {
 // Stato apertura galleria: letto prima del primo render così gli invitati non
 // vedono un lampo della griglia prima del placeholder.
 try {
-  galleriaAttiva = (await tavoli.getSettings()).galleriaAttiva;
+  const s = await tavoli.getSettings();
+  galleriaAttiva = s.galleriaAttiva;
+  galleriaBloccata = s.galleriaBloccata;
 } catch {
   galleriaAttiva = true; // in caso di errore rete non blocco la galleria
+  galleriaBloccata = false;
 }
 
 /* Regia solo con ?admin: PIN sposi, poi interruttore apertura + eliminazione di

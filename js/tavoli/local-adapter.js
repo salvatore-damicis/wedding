@@ -65,6 +65,7 @@ export class LocalTavoliAdapter {
       giochiAttivi: !!s.giochiAttivi,
       weddingDate: s.weddingDate || null,
       galleriaAttiva: !!s.galleriaAttiva,
+      galleriaBloccata: !!s.galleriaBloccata,
     };
   }
 
@@ -79,6 +80,7 @@ export class LocalTavoliAdapter {
       giochiAttivi: "giochiAttivi" in s ? !!s.giochiAttivi : !!prev.giochiAttivi,
       weddingDate: prev.weddingDate || null,
       galleriaAttiva: "galleriaAttiva" in s ? !!s.galleriaAttiva : !!prev.galleriaAttiva,
+      galleriaBloccata: "galleriaBloccata" in s ? !!s.galleriaBloccata : !!prev.galleriaBloccata,
     };
     if ("weddingDate" in s) {
       const raw = s.weddingDate;

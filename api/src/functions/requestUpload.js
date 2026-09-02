@@ -19,6 +19,14 @@ app.http("requestUpload", {
       return S.json(403, { error: "Non autorizzato" });
     }
 
+    // Galleria in sola lettura (settings.galleriaBloccata): niente nuovi
+    // caricamenti, nemmeno dal proprietario. Fail-open se le settings non sono
+    // leggibili, come la UI ottimista.
+    const settings = await S.getSiteDoc("settings").catch(() => null);
+    if (settings?.galleriaBloccata) {
+      return S.json(403, { error: "I caricamenti sono momentaneamente sospesi dagli sposi" });
+    }
+
     const id = crypto.randomUUID();
     const { uploadUrl, blobUrl } = S.uploadSas(nick, id);
     return S.json(200, { id, uploadUrl, blobUrl });

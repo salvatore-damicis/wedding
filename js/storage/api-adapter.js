@@ -110,4 +110,11 @@ export class ApiAdapter {
       body: JSON.stringify({ adminPin, nickname }),
     });
   }
+
+  async resetPin(adminPin, nickname, newPin) {
+    await this._json("/resetSpacePin", {
+      method: "POST",
+      body: JSON.stringify({ adminPin, nickname, newPin }),
+    });
+  }
 }

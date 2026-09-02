@@ -127,4 +127,17 @@ export class LocalAdapter {
     delete all[nickname];
     writeAll(all);
   }
+
+  /* Recupero "morbido" del PIN: gli Sposi ne impostano uno nuovo, le foto
+     restano. Alternativa a deleteSpace per chi ha dimenticato il PIN. */
+  async resetPin(adminPin, nickname, newPin) {
+    if (adminPin !== ADMIN_PIN) throw new Error("Non autorizzato");
+    const code = String(newPin || "").trim();
+    if (!code) throw new Error("Nuovo PIN obbligatorio");
+    const all = readAll();
+    const space = all[nickname];
+    if (!space) throw new Error("Spazio inesistente");
+    space.pin = code;
+    writeAll(all);
+  }
 }

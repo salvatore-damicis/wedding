@@ -44,6 +44,9 @@ let adminPin = null;
    può caricare né rientrare in uno spazio; gli Sposi in moderazione la scavalcano.
    Ottimista finché non ho letto le settings, così non lampeggia il blocco. */
 let galleriaAttiva = true;
+/* Sola lettura (settings.galleriaBloccata): galleria aperta e tutto visibile, ma
+   niente nuovi caricamenti. Indipendente da galleriaAttiva; scavalcata in moderazione. */
+let galleriaBloccata = false;
 
 /* Avviso mostrato quando la galleria è chiusa (inserito una volta, sopra la
    griglia; nascosto quando è aperta o in moderazione sposi). */
@@ -74,22 +77,30 @@ function itemHtml(p, i) {
 }
 
 async function render() {
-  // Galleria chiusa dagli Sposi: niente upload né accesso, salvo moderazione sposi.
-  const bloccata = !galleriaAttiva && !adminPin;
+  // Due stati distinti, entrambi scavalcati in moderazione (adminPin):
+  //  - chiusa: galleria non ancora aperta → niente upload né accesso;
+  //  - solaLettura: aperta ma congelata → tutto visibile, ma niente upload.
+  const chiusa = !galleriaAttiva && !adminPin;
+  const solaLettura = galleriaBloccata && !adminPin;
+  const noUpload = chiusa || solaLettura;
   ownerBadge.hidden = !isOwner();
-  // Upload solo al proprietario e solo a galleria aperta.
-  uploadEl.hidden = !isOwner() || bloccata;
-  // L'invito a sbloccare vale per chi non è proprietario (e non è in moderazione),
-  // ma a galleria chiusa non si entra in nessuno spazio.
-  unlockBox.hidden = isOwner() || !!adminPin || bloccata;
+  // Upload solo al proprietario e solo se la galleria non è chiusa né in sola lettura.
+  uploadEl.hidden = !isOwner() || noUpload;
+  // L'invito a sbloccare vale per chi non è proprietario (e non è in moderazione).
+  // A galleria chiusa non si entra; in sola lettura si può rientrare (solo sfoglio).
+  unlockBox.hidden = isOwner() || !!adminPin || chiusa;
   // "Esci" solo al proprietario, e discreto: niente più badge sempre in vista.
   lockBtn.hidden = !isOwner();
 
-  lockNote.hidden = !bloccata;
-  if (bloccata) {
+  lockNote.hidden = !(chiusa || solaLettura);
+  if (chiusa) {
     lockNote.textContent = isOwner()
       ? "Galleria momentaneamente chiusa: potrai caricare di nuovo quando gli sposi la riapriranno."
       : "La galleria aprirà a breve 🍷 Gli sposi la stanno preparando.";
+  } else if (solaLettura) {
+    lockNote.textContent = isOwner()
+      ? "Galleria in sola lettura: i tuoi ricordi restano visibili, ma per ora non puoi caricarne di nuovi."
+      : "Galleria in sola lettura: puoi sfogliare i ricordi, ma per ora non si caricano nuove foto.";
   }
 
   try {
@@ -370,9 +381,12 @@ pinInput.addEventListener("keydown", (e) => {
 
 // Stato apertura galleria, letto prima del primo render (in errore rete non blocco).
 try {
-  galleriaAttiva = (await tavoli.getSettings()).galleriaAttiva;
+  const s = await tavoli.getSettings();
+  galleriaAttiva = s.galleriaAttiva;
+  galleriaBloccata = s.galleriaBloccata;
 } catch {
   galleriaAttiva = true;
+  galleriaBloccata = false;
 }
 
 render();

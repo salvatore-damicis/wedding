@@ -2,10 +2,13 @@
  * Moderazione galleria — solo Sposi, si attiva con galleria.html?admin.
  * Import dinamico da galleria.js: un invitato non scarica questo modulo.
  *
- * Fa due cose:
+ * Fa tre cose:
  *  - Interruttore "Galleria aperta agli invitati" (settings.galleriaAttiva):
  *    finché è spento, gli invitati vedono la sezione predisposta ma non possono
  *    creare spazi né caricare foto. Gli Sposi qui la vedono sempre per intero.
+ *  - Interruttore "Sola lettura" (settings.galleriaBloccata), indipendente dal
+ *    primo: a galleria aperta congela i caricamenti e la creazione di spazi,
+ *    lasciando tutto ciò che è già stato caricato visibile e sfogliabile.
  *  - Eliminare un INTERO spazio (foto e video compresi) con il PIN admin. La
  *    cancellazione delle singole foto sta dentro lo spazio (spazio.html?admin).
  * Il backend autorizza deleteSpace/saveSettings solo col PIN admin e la
@@ -71,17 +74,24 @@ export async function initGalleriaAdmin({ grid, refresh }) {
   banner.className = "modera-bar";
   banner.innerHTML = `<span class="modera-bar__tag">Moderazione sposi</span>
     <label class="ga-switch modera-bar__switch"><input type="checkbox" id="gm-attiva"> <span>Galleria aperta agli invitati</span></label>
+    <label class="ga-switch modera-bar__switch"><input type="checkbox" id="gm-bloccata"> <span>Sola lettura (blocca nuovi spazi e caricamenti)</span></label>
     <span class="modera-bar__hint">Tocca ✕ su uno spazio per eliminarlo (definitivo).</span>`;
   grid.before(banner);
+
+  const attiva = banner.querySelector("#gm-attiva");
+  const bloccata = banner.querySelector("#gm-bloccata");
+  // Stato iniziale dei due interruttori in una sola lettura.
+  tavoli
+    .getSettings()
+    .then((s) => {
+      attiva.checked = !!s.galleriaAttiva;
+      bloccata.checked = !!s.galleriaBloccata;
+    })
+    .catch(() => {});
 
   /* Interruttore apertura galleria (settings.galleriaAttiva). Finché è spenta,
      gli invitati vedono la sezione predisposta ma non possono creare spazi né
      caricare foto; gli Sposi qui la vedono comunque per intero. */
-  const attiva = banner.querySelector("#gm-attiva");
-  tavoli
-    .getSettings()
-    .then((s) => (attiva.checked = !!s.galleriaAttiva))
-    .catch(() => {});
   attiva.addEventListener("change", async () => {
     try {
       await tavoli.saveSettings(pin, { galleriaAttiva: attiva.checked });
@@ -98,6 +108,28 @@ export async function initGalleriaAdmin({ grid, refresh }) {
         toast(err.message || "Impossibile salvare");
       }
       attiva.checked = !attiva.checked; // rollback visivo
+    }
+  });
+
+  /* Interruttore sola lettura (settings.galleriaBloccata), indipendente: a
+     galleria aperta congela creazione spazi e caricamenti, ma tutto resta
+     visibile. Utile per "chiudere" la raccolta dopo la festa senza cancellare. */
+  bloccata.addEventListener("change", async () => {
+    try {
+      await tavoli.saveSettings(pin, { galleriaBloccata: bloccata.checked });
+      toast(
+        bloccata.checked
+          ? "Galleria in sola lettura: nuovi spazi e caricamenti sospesi"
+          : "Galleria di nuovo aperta ai caricamenti 🍷"
+      );
+    } catch (err) {
+      if (/autorizz/i.test(err.message)) {
+        adminSession.forget();
+        toast("PIN non più valido: ricarica per rientrare");
+      } else {
+        toast(err.message || "Impossibile salvare");
+      }
+      bloccata.checked = !bloccata.checked; // rollback visivo
     }
   });
 

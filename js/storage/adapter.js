@@ -13,6 +13,7 @@
  *   setCaption(nickname, pin, id, caption)   -> void          (proprietario: didascalia)
  *   deletePhoto(nickname, pin, id)           -> void
  *   deleteSpace(adminPin, nickname)          -> void
+ *   resetPin(adminPin, nickname, newPin)     -> void          (Sposi: PIN dimenticato, foto intatte)
  *
  * Two interchangeable implementations exist (see ADR-0003). Which one is used
  * is decided by STORAGE.backend in data/config.js — NOTHING else in the app
